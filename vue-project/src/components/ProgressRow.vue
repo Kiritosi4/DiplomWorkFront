@@ -33,18 +33,24 @@ const customColors = [
 <style scoped>
 .row {
     min-height: 45px;
-    width: 100%;
     display: flex;
     flex-direction: column;
     border-radius: 4px;
     transition: .3s;
     gap: 5px;
+    padding: 5px;
+
+}
+
+.row:hover {
+    background-color: #dbdbdb;
+    cursor: pointer;
 }
 
 .text-info {
     display: flex;
     justify-content: space-between;
-    font-size: 0.9rem;
+    font-size: 1rem;
     font-weight: 500;
 }
 </style>

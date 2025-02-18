@@ -1,4 +1,5 @@
 import axios from "axios";
+import qs from 'qs';
 import { ElMessage } from 'element-plus'
 
 
@@ -28,6 +29,16 @@ apiClient.interceptors.response.use(
         return Promise.reject(error);
     }
 );
+
+const filterNullValues = (obj) => {
+    return Object.fromEntries(
+        Object.entries(obj).filter(([key, value]) => value !== null && value !== "null" && value !== "")
+    );
+};
+
+const replaceNullGuids = (obj) => {
+    return obj.map(item => item === null || item == "null" ? "00000000-0000-0000-0000-000000000000" : item);
+}
 
 export const me = async () => {
     return (await apiClient.get("users/me")).data
@@ -64,6 +75,7 @@ export const logout = async () => {
     return (await apiClient.get("users/logout")).data
 }
 
+// === РАСХОДЫ ===
 export const getExpenses = async (offset, limit, orderBy, order, minTimestamp, maxTimestamp, categories) => {
     const params = {
         offset: offset,
@@ -72,9 +84,12 @@ export const getExpenses = async (offset, limit, orderBy, order, minTimestamp, m
         order: order,
         minTimestamp: minTimestamp,
         maxTimestamp: maxTimestamp,
-        categories: categories
+        categories: replaceNullGuids(categories)
     }
-    return (await apiClient.get("expenses", { params: params})).data
+    return (await apiClient.get("expenses", { 
+        params,
+        paramsSerializer: params => qs.stringify(params, { arrayFormat: 'repeat' })
+    })).data
 }
 
 export const addExpense = async (expense) => {
@@ -102,6 +117,24 @@ export const editExpense = async (id, editedExpense) => {
     return (await apiClient.put(`expenses/${id}`, editedExpense, { headers })).data
 }
 
+export const deleteExpense = async (id) => {
+    return (await apiClient.delete(`expenses/${id}`)).data
+}
+
+export const getExpensesDashboard = async (minTimestamp, maxTimestamp, categories) => {
+    const params = {
+        minTimestamp: minTimestamp,
+        maxTimestamp: maxTimestamp,
+        categories: replaceNullGuids(categories)
+    }
+    return (await apiClient.get("expenses/dashboard", { 
+        params,
+        paramsSerializer: params => qs.stringify(params, { arrayFormat: 'repeat' })
+    })).data
+}
+// ======
+
+// === КАТЕГОРИИ РАСХОДОВ ===
 export const getExpenseCategories = async (offset, limit) => {
     const params = {
         offset: offset,
@@ -135,8 +168,59 @@ export const editExpenseCategory = async (categoryId, name) => {
     return (await apiClient.put(`expenses/category/${categoryId}`, params, { headers })).data
 }
 
-
 export const deleteExpenseCategory = async (categoryId) => {
     
     return (await apiClient.delete(`expenses/category/${categoryId}`)).data
 }
+// ======
+
+// === БЮДЖЕТЫ ===
+export const getBudgets = async (offset, limit) => {
+    const params = {
+        offset: offset,
+        limit: limit
+    }
+
+    return (await apiClient.get("budgets", { params: params})).data
+}
+
+export const addBudget = async (budgetForm) => {
+    const headers = {
+        'Content-Type': 'application/json',
+    };
+
+    const filteredData = filterNullValues(budgetForm)
+    if(!filteredData.hasOwnProperty('name')){
+        filteredData["name"] = "Без названия"
+    }
+
+    return (await apiClient.post(`budgets`, filteredData, { headers })).data
+}
+
+export const editBudget = async (budgetId, budgetForm) => {
+    const headers = {
+        'Content-Type': 'application/json',
+    };
+
+    const filteredData = filterNullValues(budgetForm)
+    if(!filteredData.hasOwnProperty('name')){
+        filteredData["name"] = "Без названия"
+    }
+
+    return (await apiClient.put(`budgets/${budgetId}`, filteredData, { headers })).data
+}
+
+export const deleteBudget = async (budgetId) => {
+    
+    return (await apiClient.delete(`budgets/${budgetId}`)).data
+}
+
+export const getBudgetExpenses = async (budgetId, offset, limit) => {
+    const params = {
+        offset: offset,
+        limit: limit
+    }
+
+    return (await apiClient.get(`budgets/${budgetId}/expenses`, { params: params})).data
+}
+// ======

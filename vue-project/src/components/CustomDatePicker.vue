@@ -44,7 +44,7 @@ const shortcuts = [
     },
 },
 {
-    text: '1 д.',
+    text: 'За 1 день',
     value: () => {
     const end = new Date()
     const start = new Date()
@@ -53,7 +53,7 @@ const shortcuts = [
     },
 },
 {
-    text: '7 д.',
+    text: 'За 7 дней',
     value: () => {
     const end = new Date()
     const start = new Date()
@@ -62,7 +62,7 @@ const shortcuts = [
     },
 },
 {
-    text: '30 д.',
+    text: 'За 30 дней',
     value: () => {
     const end = new Date()
     const start = new Date()
@@ -71,7 +71,7 @@ const shortcuts = [
     },
 },
 {
-    text: '1 год',
+    text: 'За 1 год',
     value: () => {
     const end = new Date()
     const start = new Date()

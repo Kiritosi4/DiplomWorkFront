@@ -3,6 +3,11 @@ export const getStartOfDay = () => {
     return new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0);
 }
 
+export const getEndOfDay = () => {
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+}
+
 export const getStartOfWeek = () => {
     const now = new Date();
     const dayOfWeek = now.getDay(); 
@@ -16,14 +21,31 @@ export const getStartOfWeek = () => {
     return startOfWeek;
 }
 
+export const getEndOfWeek = () => {
+    const now = new Date();
+    const lastDayOfWeek = now.getDate() + (6 - now.getDay()); // Последний день недели (суббота)
+    return new Date(now.getFullYear(), now.getMonth(), lastDayOfWeek, 23, 59, 59, 999);
+}
+
 export const getStartOfMonth = () => {
     const now = new Date();
     return new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0);
 }
 
+export const getEndOfMonth = () => {
+    const now = new Date();
+    const lastDayOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate(); // Получаем последний день текущего месяца
+    return new Date(now.getFullYear(), now.getMonth(), lastDayOfMonth, 23, 59, 59, 999);
+}
+
 export const getStartOfYear = () => {
     const now = new Date();
     return new Date(now.getFullYear(), 0, 1, 0, 0, 0, 0);
+}
+
+export const getEndOfYear = () => {
+    const now = new Date();
+    return new Date(now.getFullYear(), 11, 31, 23, 59, 59, 999); // Декабрь (11) - последний месяц года
 }
 
 export const calendarShortcuts = [
@@ -89,3 +111,36 @@ export const calendarShortcuts = [
     },
 ]
 
+export const getMaxTimestampByPeriod = (periodId) => {
+    switch (periodId) {
+        case 0:
+            return milisToSec(getEndOfDay().valueOf())
+        case 1:
+            return milisToSec(getEndOfWeek().valueOf())
+        case 2:
+            return milisToSec(getEndOfMonth().valueOf())
+        case 3:
+            return milisToSec(getEndOfYear().valueOf())
+        default:
+            return 0
+    }
+}
+
+export const getMinTimestampByPeriod = (periodId) => {
+    switch (periodId) {
+        case 0:
+            return milisToSec(getStartOfDay().valueOf())
+        case 1:
+            return milisToSec(getStartOfWeek().valueOf())
+        case 2:
+            return milisToSec(getStartOfMonth().valueOf())
+        case 3:
+            return milisToSec(getStartOfYear().valueOf())
+        default:
+            return 0
+    }
+}
+
+export const milisToSec = (milis) => {
+    return Math.floor(milis / 1000)
+}
