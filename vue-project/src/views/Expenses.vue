@@ -6,19 +6,29 @@ import { reactive, ref, computed, unref } from 'vue';
 import * as dateCalc from '@/api/dateCalculator';
 import OperationRow from '@/components/OperationRow.vue';
 import * as api from '@/api/api';
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox  } from 'element-plus'
+import ru from 'element-plus/dist/locale/ru.mjs'
 
 
 const pickedPeriod = ref([dateCalc.getStartOfMonth(), dateCalc.getEndOfDay()])
 
-const getMinPickedTimestampSec = () => dateCalc.milisToSec(pickedPeriod.value[0].valueOf())
-const getMaxPickedTimestampSec = () => dateCalc.milisToSec(pickedPeriod.value[1].valueOf())
+const getMinPickedTimestampSec = () => pickedPeriod.value === null ? 0 : dateCalc.milisToSec(pickedPeriod.value[0].valueOf())
+const getMaxPickedTimestampSec = () => pickedPeriod.value === null ? 0 : dateCalc.milisToSec(pickedPeriod.value[1].valueOf())
 
 const onPeriodChanged  = () => {
     clearOperationList()
     loadCategories()
     loadOperations()
+    refreshCharts()
 }
+
+// === Общая статистика ===
+const expensesSum = ref(0.0)
+const expensesSumDiff = ref(0.0)
+const operationAmount = ref(0)
+const operationAmountDiff = ref(0.0)
+const summaryAmount = ref(0.0)
+// ===
 
 // === Категории ===
 const categories = reactive({
@@ -44,11 +54,12 @@ const categories_selector_options = computed(() => {
 });
 
 let categoriesOffset = 0
-const categoriesLimit = 100
+const categoriesLimit = 15
 let totalCategories = 1000
 
 const loadCategories = () => {
-    if(Object.keys(categories).length >= totalCategories){
+    console.log(Object.keys(categories).length, totalCategories)
+    if(Object.keys(categories).length - 1 >= totalCategories){
         return
     }
 
@@ -65,9 +76,9 @@ const loadCategories = () => {
 }
 
 const onCategoryFilterChanged = () => {
-    console.log("Эмм")
     clearOperationList()
     loadOperations()
+    refreshCharts()
 }
 
 const openCategoryEditForm = (categoryId, categoryName) => {
@@ -131,17 +142,19 @@ const clearAddCategoryTab = () => {
 }
 
 const handleCategoryDropdownVisible = (visible) => {
-    if (visible) {
-        const dropdown = document.querySelector('.el-select-dropdown__list');
-        if (dropdown) {
-            dropdown.addEventListener('scroll', handleCategoriesScroll);
+    const dropdowns = document.querySelectorAll('.el-select-dropdown__list');
+    dropdowns.forEach(dropdown => {
+        if (visible) {
+            if (dropdown) {
+                dropdown.addEventListener('scroll', handleCategoriesScroll);
+            }
+        } else {
+            const dropdown = document.querySelector('.el-select-dropdown__list');
+            if (dropdown) {
+                dropdown.removeEventListener('scroll', handleCategoriesScroll);
+            }
         }
-    } else {
-        const dropdown = document.querySelector('.el-select-dropdown__list');
-        if (dropdown) {
-            dropdown.removeEventListener('scroll', handleCategoriesScroll);
-        }
-    }
+    })
 }
 
 const handleCategoriesScroll = (event) => {
@@ -153,37 +166,60 @@ const handleCategoriesScroll = (event) => {
 // ======
 
 // === БЮДЖЕТЫ ===
-const budgets = ref([])
+const budgets = reactive({})
 
 const sortedBudgets = computed(() => {
-    return budgets.value.slice().sort((a, b) => b.amount / b.limit - a.amount / a.limit);
+    return Object.values(budgets).sort((a, b) => b.amount / b.limit - a.amount / a.limit);
 });
 
 const budgetPeriodList = [
     {
         value: 0,
-        label: "День"
+        label: "Ежедневный"
     },
     {
         value: 1,
-        label: "Неделя"
+        label: "Еженедельный"
     },
     {
         value: 2,
-        label: "Месяц"
+        label: "Ежемесячный"
     },
     {
         value: 3,
-        label: "Год"
+        label: "Ежегодный"
+    },
+    {
+        value: 4,
+        label: "Свой период"
     },
 ]
 
+const getBudgetRowPeriodLabel  = (budget) => {
+    if(budget.periodType !== 4){
+        return budgetPeriodList[budget.periodType].label
+    }
+
+    const startStr = new Date(budget.startPeriod * 1000).toLocaleDateString('ru-RU', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+    })
+    const endStr = new Date(budget.endPeriod * 1000).toLocaleDateString('ru-RU', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+    })
+
+    return `${startStr} - ${endStr}`
+}
+
 let budgetsListOffset = 0
-const budgetsListLimit = 50
+const budgetsListLimit = 10
 let totalBudgets = 1000
 
 const loadBudgets = () => {
-    if(budgets.value.length >= totalBudgets){
+    if(Object.keys(budgets).length >= totalBudgets){
         return
     }
 
@@ -194,7 +230,7 @@ const loadBudgets = () => {
     .then((response) => {
         totalBudgets = response.total
         response.data.forEach(budget => {
-            budgets.value.push(budget)
+            budgets[budget.id] = budget
         })
     })
 
@@ -209,18 +245,32 @@ const getBudgetFormTitle = () => {
     return hasEditingBudget.value ? "Редактирование бюджета" : "Добавление бюджета"
 }
 
+const pickedBudgetPeriod = ref([0, 0])
+
 const budgetFormBody = reactive({
     "name": "",
     "category": null,
     "limit": 0,
-    "periodType": 2
+    "periodType": 2,
+    get startPeriod() {
+        return Math.floor(pickedBudgetPeriod.value[0] / 1000)
+        
+    },
+    get endPeriod() {
+        return Math.floor(pickedBudgetPeriod.value[1] / 1000)
+    },
 })
 
 const callEditBudgetTab = (budget) => {
     budgetFormBody.name = budget.name
     budgetFormBody.category = budget.category
     budgetFormBody.limit = budget.limit
+
     budgetFormBody.periodType = budget.periodType
+    
+    if(budget.periodType == 4){
+        pickedBudgetPeriod.value = [budget.startPeriod * 1000, budget.endPeriod * 1000]
+    }
 
     editingBudgetId.value = budget.id
 
@@ -233,8 +283,7 @@ const callEditBudgetTab = (budget) => {
 const editBudget = () => {
     api.editBudget(editingBudgetId.value, budgetFormBody)
     .then((response) => {
-        let index = budgets.value.findIndex(budget => budget.id === editingBudgetId.value);
-        budgets.value[index] = response
+        budgets[response.id] = response
 
         ElMessage.success("Бюджет изменен.")
         clearBudgetForm()
@@ -244,8 +293,7 @@ const editBudget = () => {
 const deleteBudget = () => {
     api.deleteBudget(editingBudgetId.value)
     .then(() => {
-        let index = budgets.value.findIndex(budget => budget.id === editingBudgetId.value);
-        budgets.value.splice(index, 1)
+        delete budgets[editingBudgetId.value]
 
         // Очистка у связанных расходов айди удаленного бюджета
         expenses.value.forEach(expense => {
@@ -269,7 +317,7 @@ const addBudget = () => {
     api.addBudget(budgetFormBody)
     .then((response) => {
         response.amount = 0
-        budgets.value.push(response);
+        budgets[response.id] = response
 
         ElMessage.success("Новый бюджет создан")
         clearBudgetForm()
@@ -282,10 +330,11 @@ const clearBudgetForm = () => {
     budgetFormBody.limit = 0,
     budgetFormBody.name = ""
     budgetFormBody.periodType = 2
+    pickedBudgetPeriod.value = [0,0]
 
-    if(hasEditingBudget){
+    if(hasEditingBudget && pickedPeriod.value !== null){
         const filteredExpenses =  expenses.value.filter(item => 
-            item.createdAt > dateCalc.milisToSec(pickedPeriod.value[0].valueOf()) && item.createdAt < dateCalc.milisToSec(pickedPeriod.value[1].valueOf())
+            item.createdAt > getMinPickedTimestampSec() && item.createdAt < getMaxPickedTimestampSec()
         )
 
         expenses.value = filteredExpenses
@@ -296,12 +345,17 @@ const clearBudgetForm = () => {
 }
 
 const budgetsListForDropdown = computed(() => {
-    return budgets.value.map(budget => ({
+    let val = Object.values(budgets).map(budget => ({
         label: budget.name,
         value: budget.id,
         amount: budget.amount,
         limit: budget.limit,
-    }));
+    }))
+    val.unshift({
+        label: "Без бюджета",
+        value: null,
+    })
+    return val
 });
 
 // = Расходы бюджета =
@@ -327,7 +381,7 @@ const loadBudgetExpenses = () => {
     )
     .then((response => {
         totalBudgetExpenses = response.total
-        
+
         const oldExpenseIds = new Set(expenses.value.map(expense => expense.id));
 
         response.data.forEach(expense => {
@@ -388,6 +442,10 @@ const loadOperations = () => {
 
         response.categories.forEach(category => {
             categories[category["id"]] = category
+        });
+
+        response.budgets.forEach(budget => {
+            budgets[budget["id"]] = budget
         });
     }))
 
@@ -470,45 +528,97 @@ const callEditOperationTab = (expense) => {
 }
 
 const editOperation = () => {
+    const expenseIndex = expenses.value.findIndex(expense => expense.id === editingOperationId);
+    const editedExpense =  expenses.value[expenseIndex] 
+    
+    const currBudget = budgets[editedExpense.budgetId]
+    const pickedTimestampSec = dateCalc.milisToSec(expenseFormBody.timestamp)
+
+    // Предупреждение о лимите бюджета
+    let warningMessage = ""
+    if(editedExpense.budgetId === expenseFormBody.budgetId){
+        if(currBudget !== undefined && currBudget.startPeriod <= pickedTimestampSec && pickedTimestampSec <= currBudget.endPeriod){
+            const diff = expenseFormBody.amount - editedExpense.amount
+            const beforeInPeriod = currBudget.startPeriod <= editedExpense.createdAt && editedExpense.createdAt <= currBudget.endPeriod
+            const futureAmount = beforeInPeriod ? currBudget.amount + diff : currBudget.amount + expenseFormBody.amount
+
+            if(futureAmount > currBudget.limit){
+                let diffBudget = futureAmount - currBudget.limit
+                warningMessage = `После изменения расхода, бюджет "${currBudget.name}" будет превышен на ${diffBudget.toFixed(2)} ₽!`
+            }
+            if(futureAmount === currBudget.limit){
+                warningMessage = `После изменения расхода, лимит бюджета "${currBudget.name}" будет достигнут!`
+            }
+        }
+    }else{
+        
+        const newBudget = budgets[expenseFormBody.budgetId];
+        if(newBudget !== undefined && newBudget.startPeriod <= pickedTimestampSec && pickedTimestampSec <= newBudget.endPeriod){
+            if(newBudget.amount + expenseFormBody.amount > newBudget.limit){
+                let diff = newBudget.amount + expenseFormBody.amount - newBudget.limit
+                warningMessage = `После изменения расхода, бюджет "${newBudget.name}" будет превышен на ${diff.toFixed(2)}₽!`
+            }
+            if(newBudget.amount + expenseFormBody.amount === newBudget.limit){
+                warningMessage = `После изменения расхода, лимит бюджета "${newBudget.name}" будет достигнут!`
+            }
+        }
+    }
+
+    if(warningMessage !== ""){
+        ElMessageBox.confirm(
+            warningMessage,
+            'Внимание!',
+            {
+                confirmButtonText: 'Oк',
+                cancelButtonText: 'Отмена',
+                type: 'warning',
+                dangerouslyUseHTMLString: true,
+            }
+        ).then(() => {
+            editOperationConfirm(editedExpense, currBudget)
+        }).catch(() => {
+            return
+        })
+    }else{
+        editOperationConfirm(editedExpense, currBudget)
+    }
+}
+
+const editOperationConfirm = (editedExpense, currBudget) => {
     api.editExpense(editingOperationId, expenseFormBody)
     .then(() => {
-        let expenseIndex = expenses.value.findIndex(expense => expense.id === editingOperationId);
-        let editedExpense =  expenses.value[expenseIndex] 
+        const amountDiff = editedExpense.amount - expenseFormBody.amount
+        summaryAmount.value += amountDiff
 
         //Изменение связанного бюджета
         if(editedExpense.budgetId === expenseFormBody.budgetId) {
-            const amountDiff = editedExpense.amount - expenseFormBody.amount
-            if(amountDiff != 0){
-                let budgetIndex = budgets.value.findIndex(budget => budget.id === expenseFormBody.budgetId);
-                if(budgetIndex !== -1){
-                    budgets.value[budgetIndex].amount -= amountDiff
+            if(currBudget !== undefined){
+                const prevTimestampInPeriod = editedExpense.createdAt >= currBudget.startPeriod && editedExpense.createdAt <= currBudget.endPeriod
+                if(expenseFormBody.timestamp >= currBudget.startPeriod && expenseFormBody.timestamp <= currBudget.endPeriod){
+                    if(prevTimestampInPeriod){
+                        currBudget.amount -= amountDiff
+                    }else{
+                        currBudget.amount += editedExpense.amount
+                    }
+                }else if(prevTimestampInPeriod){
+                    currBudget.amount -= editedExpense.amount
                 }
             }
         }else{
-            if(editedExpense.budgetId){
-                let oldBudgetIndex = budgets.value.findIndex(budget => budget.id === editedExpense.budgetId);
-                if(oldBudgetIndex !== -1){
-                    budgets.value[oldBudgetIndex].amount -= editedExpense.amount
+            if(currBudget !== undefined){
+                if(editedExpense.createdAt >= currBudget.startPeriod && editedExpense.createdAt <= currBudget.endPeriod){
+                    currBudget.amount -= editedExpense.amount
                 }
             }
 
-            let newBudgetIndex = budgets.value.findIndex(budget => budget.id === expenseFormBody.budgetId);
-            if(newBudgetIndex !== -1){
-                budgets.value[newBudgetIndex].amount += expenseFormBody.amount
+            const newBudget = budgets[expenseFormBody.budgetId];
+            if(newBudget !== undefined){
+                
+                if(editedExpense.createdAt > newBudget.startPeriod && editedExpense.createdAt < newBudget.endPeriod){
+                    newBudget.amount += expenseFormBody.amount
+                }
             }
         }
-        
-        /*
-        // Првоерка что изменения вписываются в период
-        if(getMinPickedTimestampSec() < expenseFormBody.timestamp && expenseFormBody.timestamp < getMaxPickedTimestampSec()){
-            editedExpense.amount = expenseFormBody.amount
-            editedExpense.categoryId = expenseFormBody.categoryId
-            editedExpense.createdAt = expenseFormBody.timestamp
-            editedExpense.budgetId = expenseFormBody.budgetId
-        }else{
-            expenses.value.splice(expenseIndex, 1)
-        }
-        */
 
         clearOperationList()
         loadOperations()
@@ -526,13 +636,15 @@ const deleteOperation = () => {
         const deletedExpense = expenses.value[index]
 
         // Обновление связанного бюджета
-        if(deletedExpense.budgetId){
-            const budgetIndex = budgets.value.findIndex(budget => budget.id === deletedExpense.budgetId);
-            budgets.value[budgetIndex].amount -= deletedExpense.amount
+        // TODO : ДОБАВИТЬ ПРОВЕРКУ ВРЕМЕНИ ВХОЖДЕНИЯ В БЮДЖЕТ
+        const myBudget = budgets[deletedExpense.budgetId]
+        if(myBudget !== undefined && myBudget.startPeriod <= deletedExpense.createdAt && deletedExpense.createdAt <= myBudget.endPeriod){
+            myBudget.amount -= deletedExpense.amount
         }
+        summaryAmount.value += deletedExpense.amount
 
         expenses.value.splice(index, 1)
-
+        refreshCharts()
         ElMessage.success("Запись о расходе удалена.")
         clearAddOperationForm()
     })
@@ -545,35 +657,58 @@ const callAddOperationForm = () => {
 }
 
 const addOperation = () => {
+    const expenseBudget = budgets[expenseFormBody.budgetId]
+    const pickedTimestampSec = dateCalc.milisToSec(expenseFormBody.timestamp)
+
+    // Предупреждение о лимите бюджета
+    if(expenseBudget !== undefined && expenseBudget.startPeriod <= pickedTimestampSec && pickedTimestampSec <= expenseBudget.endPeriod){
+        let warnMsg = ""
+        if(expenseBudget.amount + expenseFormBody.amount > expenseBudget.limit){
+            warnMsg = `После добавление расхода, бюджет "${expenseBudget.name}" будет превышен на ${expenseBudget.amount + expenseFormBody.amount - expenseBudget.limit}₽!`
+        }
+
+        if(expenseBudget.amount + expenseFormBody.amount == expenseBudget.limit){
+            warnMsg = `После добавление расхода, лимит бюджета "${expenseBudget.name}" будет достигнут!`
+        }
+
+        if(warnMsg !== ""){
+            ElMessageBox.confirm(
+                warnMsg,
+                'Внимание!',
+                {
+                    confirmButtonText: 'Oк',
+                    cancelButtonText: 'Отмена',
+                    type: 'warning',
+                }
+            ).then(() => {
+                addOperationConfirm(expenseBudget)
+            }).catch(() => {
+                return
+            })
+        }else{
+            addOperationConfirm(expenseBudget)
+        }
+    }else{
+        addOperationConfirm(expenseBudget)
+    }
+}
+
+const addOperationConfirm = (expenseBudget) => {
     expenseFormBody.timestamp = dateCalc.milisToSec(expenseFormBody.timestamp)
 
     api.addExpense(expenseFormBody)
     .then((response) => {
-        /*
-        // Добавление подходящей по периоду операции
-        if(getMinPickedTimestampSec() < response.createdAt && response.createdAt < getMaxPickedTimestampSec()){
-            expenses.value.push(response);
-            sortExpenses()
-        }
-        */
-
         clearOperationList()
         loadOperations()
+        summaryAmount.value -= expenseFormBody.amount
 
         //Изменение связанного бюджета
-        if(expenseFormBody.budgetId){
-            let index = budgets.value.findIndex(budget => budget.id === expenseFormBody.budgetId);
+        if(expenseBudget !== undefined){
+            const startPeriod = dateCalc.getMinTimestampByPeriod(expenseBudget.periodType)
+            const endPeriod = dateCalc.getMaxTimestampByPeriod(expenseBudget.periodType)
 
-            if(index !== -1){
-                let expenseBudget = budgets.value[index]
-                const startPeriod = dateCalc.getMinTimestampByPeriod(expenseBudget.periodType)
-                const endPeriod = dateCalc.getMaxTimestampByPeriod(expenseBudget.periodType)
-                console.log(startPeriod, expenseFormBody.timestamp, endPeriod)
-
-
-                if(startPeriod < expenseFormBody.timestamp && expenseFormBody.timestamp < endPeriod){
-                    expenseBudget.amount += expenseFormBody.amount
-                }
+            if(startPeriod <= expenseFormBody.timestamp && expenseFormBody.timestamp <= endPeriod){
+                expenseBudget.amount += expenseFormBody.amount
             }
         }
 
@@ -581,6 +716,16 @@ const addOperation = () => {
         clearAddOperationForm()
         refreshCharts()
     })
+}
+
+const onExpenseFormCategoryChanged = (val) => {
+    if(expenseFormBody.budgetId === "" || expenseFormBody.budgetId == null){
+        const foundedBudget = Object.values(budgets).find(budget => budget.categoryId === val)
+        if(foundedBudget !== undefined){
+            expenseFormBody.budgetId = foundedBudget.id
+        }
+    }
+    
 }
 
 const clearAddOperationForm = () => {
@@ -615,22 +760,30 @@ const piechartOptions = computed(() => {
     return {
         chart: {
             type: 'donut',
+            height: '300'
         },
         labels: piechartLabels.value.map(categoryId => {
             const fixedcategoryId = categoryId === "00000000-0000-0000-0000-000000000000" ? null : categoryId
             return categories[fixedcategoryId].name || "Прочее"
         }),
         responsive: [{
-            breakpoint: 480,
+            breakpoint: 1280,
             options: {
-            chart: {
-                width: 200
-            },
             legend: {
                 position: 'bottom'
             }
             }
-        }]
+        }],
+        noData: {
+            text: 'Недостаточно данных',
+            align: 'center',
+            verticalAlign: 'middle',
+            style: {
+                color: "rgba(51,51,56,0.5)",
+                fontSize: '1.2rem',
+                fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif"
+            }
+        }
     }
 })
 
@@ -650,8 +803,21 @@ const refreshCharts = () => {
         piechartSeries.value = Object.values(response.pieChartData)
         piechartLabels.value = Object.keys(response.pieChartData)
 
-        console.log(piechartOptions.value)
-        console.log(piechartLabels.value)
+        expensesSum.value = response.totalAmount
+        if(response.lastTotalAmount != 0){
+            expensesSumDiff.value = expensesSum.value / response.lastTotalAmount * 100
+            expensesSumDiff.value = Number(expensesSumDiff.value.toFixed(2));
+        }else{
+            expensesSumDiff.value = 0.0
+        }
+
+        operationAmount.value = response.totalOperations
+        if(response.lastTotalOperations != 0){
+            operationAmountDiff.value = operationAmount.value / response.lastTotalOperations * 100
+            operationAmountDiff.value = Number(operationAmountDiff.value.toFixed(2));
+        }else{
+            operationAmountDiff.value = 0.0
+        }
     }))
 }
 // ======
@@ -661,6 +827,11 @@ loadCategories()
 loadOperations()
 loadBudgets()
 refreshCharts()
+
+api.getSummaryAmount()
+    .then((response => {
+        summaryAmount.value = response
+    }))
 //======
 </script>
 
@@ -669,9 +840,9 @@ refreshCharts()
     <div class = "content">
         <div class = "wrapper">
             <div class="toolbar">
-                <h1>Расходы</h1>
+                <h1>Бюджеты и расходы</h1>
                 <div class="toolbar-tools">
-                    <el-button type="primary" style="margin-right: 15px; padding-left: 5px;" @click="callAddOperationForm">
+                    <el-button type="primary" @click="callAddOperationForm">
                         <svg class="w-[20px] h-[20px] text-gray-800 dark:text-white" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" style="margin-right: 5px;">
                             <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14m-7 7V5"/>
                         </svg>
@@ -681,7 +852,7 @@ refreshCharts()
                     v-model="selected_categories"
                     :options="categories_selector_options"
                     placeholder="Все категории"
-                    style="min-width: 150px; margin-right: 16px; vertical-align: middle; max-width: 240px"
+                    style="min-width: 150px; vertical-align: middle; max-width: 240px"
                     multiple
                     clearable
                     collapse-tags
@@ -738,54 +909,55 @@ refreshCharts()
             </div>
             
             <div class="main-stats">
-                <StatiscticCards/>
+                <StatiscticCards  
+                first-title="💸 Расходы за период"
+                :first-digit="expensesSum"
+                :first-digit-diff="expensesSumDiff"
+                sec-title="📑 Количество расходов"
+                :sec-digit="operationAmount"
+                :sec-digit-diff="operationAmountDiff"
+                third-title="💰 Разница доходов и расходов"
+                :third-digit="summaryAmount"
+                first-postfix="₽"
+                third-postfix="₽"
+                />
             </div>
 
             <div class = "main-container">
-                <div class="left-side">
-                    <div class = "main-chart">
-                        График расходов
-                        <apexchart height="300" type="bar" :options="mainchart_options" :series="mainchart_series"></apexchart>
+                <div class="budgets-container grid-chain grid2">
+                    <div style="display: flex; justify-content: space-between;">
+                        📋 Список бюджетов
+                        <el-button type="primary" style="padding-left: 5px;" @click="callBudgetForm">
+                            <svg class="w-[20px] h-[20px] text-gray-800 dark:text-white" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" style="margin-right: 5px;">
+                                <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14m-7 7V5"/>
+                            </svg>
+                            Добавить бюджет
+                        </el-button>
                     </div>
-                    <div class = "expense-profit-container">
-                        <div class="budgets-container">
-                            <div style="display: flex; justify-content: space-between;">
-                                Список бюджетов
-                                <el-button type="primary" style="padding-left: 5px;" @click="callBudgetForm">
-                                    <svg class="w-[20px] h-[20px] text-gray-800 dark:text-white" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" style="margin-right: 5px;">
-                                        <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14m-7 7V5"/>
-                                    </svg>
-                                    Добавить бюджет
-                                </el-button>
-                            </div>
-                            <div class="chart-list" v-infinite-scroll="loadBudgets" style="overflow: auto; overflow-x: hidden;">
-                                <ProgressRow 
-                                    v-for="item in sortedBudgets"
-                                    :key="item.name"
-                                    :title="item.name"
-                                    :amount="item.amount"
-                                    :limit="item.limit"
-                                    @click="callEditBudgetTab(item)"
-                                    />
-                            </div>
-                        </div> 
-                        <div class="expenses-piechart-container">
-                            Структура расходов
-                            <div class="pie-chart">
-                                <apexchart type="donut" :series="piechartSeries" :options="piechartOptions" height="300"></apexchart>
-                            </div>
-                        </div>
+                    <div v-if="Object.keys(budgets).length > 0" class="chart-list" v-infinite-scroll="loadBudgets" style="overflow: auto; overflow-x: hidden;">
+                        <ProgressRow 
+                            v-for="item in sortedBudgets"
+                            :key="item.name"
+                            :title="item.name"
+                            :amount="item.amount"
+                            :limit="item.limit"
+                            :period-info="getBudgetRowPeriodLabel(item)"
+                            @click="callEditBudgetTab(item)"
+                            />
+                    </div>
+                    <div v-else style="text-align: center; align-items: center; position: relative; top: 40%;">
+                        <span style="opacity: 50%;">Нет установленных бюджетов</span>
                     </div>
                 </div>
-                <div class="right-side">
+                <div class="right-side grid4">
                     <div class="expenses-container">
                         <div class="expenses-container-toolbar">
-                            Записи
+                            📋 Расходы
                             <el-select-v2
                             v-model="selected_expenses_sort"
                             :options="expenses_sort_options"
                             placeholder="Сортировка"
-                            style="vertical-align: middle; max-width: 240px; width: 200px; font-weight: 400;"
+                            style="vertical-align: middle; max-width: 180px; width: 180px; font-weight: 400;"
                             @change="onExpensesSortChanged()"
                             />
                         </div>
@@ -800,17 +972,41 @@ refreshCharts()
                                 @click="callEditOperationTab(item)"
                                 />
                         </div>
+                        <div v-if="expenses.length == 0" style="text-align: center; display: flex; flex-direction: column; gap: 10px; align-items: center; position: relative; top: 40%;">
+                            <span style="opacity: 50%;">Нет записей</span>
+                            <el-button type="primary" @click="callAddOperationForm" style="padding-left: 5px;">
+                                <svg class="w-[20px] h-[20px] text-gray-800 dark:text-white" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" style="margin-right: 5px;">
+                                    <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14m-7 7V5"/>
+                                </svg>
+                                Добавить
+                            </el-button>
+                        </div>
                     </div> 
+                </div>
+                <div class="expenses-piechart-container grid-chain grid3">
+                    📊 Структура расходов
+                    <div class="pie-chart">
+                        <apexchart type="donut" :series="piechartSeries" :options="piechartOptions"></apexchart>
+                    </div>
+                </div>
+                <div class = "main-chart grid1">
+                    📊 График расходов
+                    <apexchart height="300" type="bar" :options="mainchart_options" :series="mainchart_series"></apexchart>
                 </div>
             </div>
         </div>
     </div>
 
     <!-- РАСХОДЫ -->
-    <el-dialog v-model="expenseFormVisible" :title="getOperationFormTitle()" width="500" @close="clearAddOperationForm">
+    <el-dialog v-model="expenseFormVisible" :title="getOperationFormTitle()" @close="clearAddOperationForm" style="width: 90%; max-width: 500px;">
         <el-form :model="expenseFormBody" label-width="auto" >
             <el-form-item label="Сумма">
-                <el-input-number v-model="expenseFormBody.amount" :min="0.01" style="width: 100%;">
+                <el-input-number 
+                v-model="expenseFormBody.amount" 
+                :min="0.01"
+                :precision="2"
+                :max="100000000000000"
+                style="width: 100%;">
                     <template #suffix>
                         <span>₽</span>
                     </template>
@@ -824,6 +1020,7 @@ refreshCharts()
                 format="DD.MM.YYYY, HH:mm"
                 value-format="x"
                 style="width: 100%;"
+                :clearable="false"
                 />
             </el-form-item>
             <el-form-item label="Категория">
@@ -833,6 +1030,7 @@ refreshCharts()
                     placeholder="Прочее"
                     style="min-width: 150px; margin-right: 16px; vertical-align: middle;"
                     @visible-change="handleCategoryDropdownVisible"
+                    @change="onExpenseFormCategoryChanged"
                     >
                         <template #default="{ item }">
                             <el-button v-if="item.ownerId" circle @click="openCategoryEditForm(item.value, item.label)" style="max-width: 25px; max-height: 25px; border: none; position: absolute;" @click.stop>
@@ -875,11 +1073,12 @@ refreshCharts()
                 :options="budgetsListForDropdown"
                 placeholder="Выберите бюджет"
                 style="min-width: 150px; vertical-align: middle; width: 100%"
+                clearable
                 >
                 <template #default="{ item }">
                     <div style="display: flex; justify-content: space-between;">
                         <span>{{ item.label }}</span>
-                        <span>{{ item.amount }} / {{ item.limit }} ₽</span>
+                        <span v-if="item.limit > 0">{{ item.amount }} / {{ item.limit }} ₽</span>
                     </div>
                 </template>
                 </el-select-v2>
@@ -898,13 +1097,18 @@ refreshCharts()
     </el-dialog>
 
     <!-- БЮДЖЕТ -->
-    <el-dialog v-model="budgetFormVisible" :title="getBudgetFormTitle()" width="600" @close="clearBudgetForm">
+    <el-dialog v-model="budgetFormVisible" :title="getBudgetFormTitle()"  style="width: 90%; max-width: 600px;" @close="clearBudgetForm">
         <el-form :model="budgetFormBody" label-width="auto" >
             <el-form-item label="Название">
                 <el-input v-model="budgetFormBody.name" :min="0.01" style="width: 100%;" maxlength="32" show-word-limit minlength="1"/>
             </el-form-item>
             <el-form-item label="Лимит">
-                <el-input-number v-model="budgetFormBody.limit" :min="0.01" style="width: 100%;">
+                <el-input-number 
+                v-model="budgetFormBody.limit" 
+                :min="0.01"
+                :precision="2"
+                :max="100000000000000"
+                style="width: 100%;">
                     <template #suffix>
                         <span>₽</span>
                     </template>
@@ -960,6 +1164,20 @@ refreshCharts()
                 placeholder="Выберите период"
                 style="min-width: 150px; vertical-align: middle; width: 100%"
                 />
+            </el-form-item>
+            <el-form-item
+            v-if="budgetFormBody.periodType === 4"
+            >
+            <el-date-picker
+                v-model="pickedBudgetPeriod"
+                type="daterange"
+                unlink-panels
+                range-separator="-"
+                start-placeholder="От"
+                end-placeholder="До"
+                style="width: 100%;"
+                value-format="x"
+            />
             </el-form-item>
         </el-form>
         <template #footer>
@@ -1033,7 +1251,6 @@ h1 {
 }
 
 .right-side {
-    flex-basis: 20%;
     display: flex;
 }
 
@@ -1046,22 +1263,31 @@ h1 {
     width: 100%;
 }
 
-.expenses-piechart-container {
-    flex-basis: 25%;
-}
-
 .expense-profit-container{
     display: flex;
     gap: 15px;
 }
 
 .main-container{
-    display: flex;
-    gap: 15px;
-    margin-top: 25px;
+    display: grid;
+    grid-template-columns: repeat(2, 2fr) 1fr;
+    grid-template-rows: repeat(2, 1fr);
+    grid-column-gap: 15px;
+    grid-row-gap: 15px;
+    margin-top: 15px;
 }
 
-.expense-profit-container > div{
+.main-container > *{
+    box-sizing: border-box;
+    max-width: 96vw;
+}
+
+.grid1 { grid-area: 2 / 1 / 3 / 3; }
+.grid2 { grid-area: 1 / 1 / 2 / 2; }
+.grid3 { grid-area: 1 / 2 / 2 / 3; }
+.grid4 { grid-area: 1 / 3 / 3 / 4; }
+
+.grid-chain{
     background-color: #ededed;
     flex: 1;
     border-radius: 4px;
@@ -1075,6 +1301,7 @@ h1 {
     display: flex;
     flex-direction: column;
     gap: 5px;
+    max-height: 295px;
 }
 
 .operation-list {
@@ -1084,11 +1311,13 @@ h1 {
     max-height: 765px;
     list-style: none;
     color: #333338;
+    max-height: 660px;
 }
 
 .toolbar-tools{
     display: flex;
     align-items: flex-end;
+    gap: 15px
 }
 
 .expenses-container-toolbar {
@@ -1103,9 +1332,47 @@ h1 {
     gap: 10px;
 }
 
+.toolbar-tools > .el-button {
+    padding-block: 8px;
+    padding-left: 5px;
+}
+
+
+@media (max-width: 1200px) {
+    .wrapper {
+        padding-inline: 2%;
+    }
+}
+
 @media (max-width: 1024px) {
     .expense-profit-container {
         display: block;
+    }
+
+    .toolbar {
+        flex-direction: column;
+        align-items: start;
+        padding-bottom: 15px;
+    }
+
+    .main-container{
+        grid-template-columns: 1fr;
+        grid-template-rows: repeat(4, 1fr);
+    }
+
+    .grid1 { grid-area: auto; }
+    .grid2 { grid-area: auto; }
+    .grid3 { grid-area: auto; }
+    .grid4 { grid-area: auto; }
+
+    .operation-list {
+        max-height: 295px;
+    }
+}
+
+@media (max-width: 1024px) {
+    .toolbar-tools{
+        flex-wrap: wrap;
     }
 }
 </style>

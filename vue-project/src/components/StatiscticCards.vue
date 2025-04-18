@@ -1,76 +1,47 @@
 <script setup>
 defineProps({
-    expense_amount: Number,
-    profit_amount: Number,
-    result_amount: Number,
-    expense_than: Number,
-    profit_than: Number,
-    result_than: Number
+    firstDigit: Number,
+    secDigit: Number,
+    thirdDigit: Number,
+    thirdDigitDiff: Number,
+    firstDigitDiff: Number,
+    secDigitDiff: Number,
+    firstTitle : String,
+    secTitle : String,
+    thirdTitle : String,
+    firstPostfix : String,
+    secPostfix : String,
+    thirdPostfix : String,
 })
 </script>
 
 <template>
-    <el-row :gutter="16">
-      <el-col :span="8">
+    <el-row class="card-container">
+      <el-col class="card1">
         <div class="statistic-card">
-          <el-statistic :value=profit_amount>
+          <el-statistic :value=firstDigit>
             <template #title>
               <div style="display: inline-flex; align-items: center">
-                <span class="statistic-title">Доходы</span>
-                <el-tooltip
-                  effect="dark"
-                  content="Сумма доходов за выбранный период"
-                  placement="top"
-                >
-                <el-icon style="margin-left: 4px; align-self: center;" :size="17">
-                    <svg class="w-6 h-6 text-gray-800 dark:text-white" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="30" height="30" fill="none" viewBox="0 0 24 24">
-                      <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M10 11h2v5m-2 0h4m-2.592-8.5h.01M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/>
-                    </svg>
-                  </el-icon>
-                </el-tooltip>
+                <span class="statistic-title">{{ firstTitle }}</span>
               </div>
+            </template>
+            <template #suffix>
+              {{ firstPostfix }}
             </template>
           </el-statistic>
           <div class="statistic-footer">
-            <div class="footer-item">
-              <span>за прошлый период</span>
-              <span class="green">
-                {{ expense_diff }}%
+            <div class="footer-item" v-if="firstDigitDiff != 0">
+              <span>больше прошлого периода на </span>
+              <span class="green" v-if="firstDigitDiff > 0">
+                {{ firstDigitDiff }}%
                 <el-icon>
                   <svg class="w-[25px] h-[25px] text-gray-800 dark:text-white" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
                     <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="m5 15 7-7 7 7"/>
                   </svg>
                 </el-icon>
               </span>
-            </div>
-          </div>
-        </div>
-      </el-col>
-      <el-col :span="8">
-        <div class="statistic-card">
-          <el-statistic :value=expense_amount>
-            <template #title>
-              <div style="display: inline-flex; align-items: center">
-                <span class="statistic-title">Расходы</span>
-                <el-tooltip
-                  effect="dark"
-                  content="Сумма всех расходов за выбранный период"
-                  placement="top"
-                >
-                  <el-icon style="margin-left: 4px; align-self: center;" :size="17">
-                    <svg class="w-6 h-6 text-gray-800 dark:text-white" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="30" height="30" fill="none" viewBox="0 0 24 24">
-                      <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M10 11h2v5m-2 0h4m-2.592-8.5h.01M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/>
-                    </svg>
-                  </el-icon>
-                </el-tooltip>
-              </div>
-            </template>
-          </el-statistic>
-          <div class="statistic-footer">
-            <div class="footer-item">
-              <span>за прошлый период</span>
-              <span class="red">
-                12%
+              <span class="red" v-else>
+                {{ firstDigitDiff }}%
                 <el-icon>
                   <svg class="w-[25px] h-[25px] text-gray-800 dark:text-white" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
                     <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="m19 9-7 7-7-7"/>
@@ -81,29 +52,72 @@ defineProps({
           </div>
         </div>
       </el-col>
-      <el-col :span="8">
+      <el-col  class="card2">
         <div class="statistic-card">
-          <el-statistic :value="72000" title="New transactions today">
+          <el-statistic :value=secDigit>
             <template #title>
               <div style="display: inline-flex; align-items: center">
-                <span class="statistic-title">Остатки</span>
+                <span class="statistic-title">{{ secTitle }} </span>
               </div>
             </template>
+            <template #suffix>
+              {{ secPostfix }}
+            </template>
           </el-statistic>
-          <div class="statistic-footer">
-            <div class="footer-item">
-              <span>за прошлый период</span>
-              <span class="green">
-                16%
+          <div class="statistic-footer" >
+            <div class="footer-item" v-if="secDigitDiff != 0 && secDigitDiff != NaN">
+              <span>относительно прошлого периода</span>
+              <span class="green" v-if="firstDigitDiff > 0">
+                {{ secDigitDiff }}%
                 <el-icon>
-                  <CaretTop />
+                  <svg class="w-[25px] h-[25px] text-gray-800 dark:text-white" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
+                    <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="m5 15 7-7 7 7"/>
+                  </svg>
+                </el-icon>
+              </span>
+              <span class="red" v-else>
+                {{ secDigitDiff }}%
+                <el-icon>
+                  <svg class="w-[25px] h-[25px] text-gray-800 dark:text-white" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
+                    <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="m19 9-7 7-7-7"/>
+                  </svg>
                 </el-icon>
               </span>
             </div>
-            <div class="footer-item">
-              <el-icon :size="14">
-                <ArrowRight />
-              </el-icon>
+          </div>
+        </div>
+      </el-col>
+      <el-col class="card3">
+        <div class="statistic-card">
+          <el-statistic :value=thirdDigit title="New transactions today">
+            <template #title>
+              <div style="display: inline-flex; align-items: center">
+                <span class="statistic-title">{{ thirdTitle }}</span>
+              </div>
+            </template>
+            <template #suffix>
+              {{ thirdPostfix }}
+            </template>
+          </el-statistic>
+          <div class="statistic-footer">
+            <div class="footer-item" v-if="thirdDigitDiff != 0 && thirdDigitDiff != NaN && thirdDigitDiff != null">
+              <span>относительно прошлого периода</span>
+              <span class="green" v-if="thirdDigitDiff > 0">
+                {{ thirdDigitDiff }}%
+                <el-icon>
+                  <svg class="w-[25px] h-[25px] text-gray-800 dark:text-white" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
+                    <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="m5 15 7-7 7 7"/>
+                  </svg>
+                </el-icon>
+              </span>
+              <span class="red" v-else>
+                {{ thirdDigitDiff }}%
+                <el-icon>
+                  <svg class="w-[25px] h-[25px] text-gray-800 dark:text-white" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
+                    <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="m19 9-7 7-7-7"/>
+                  </svg>
+                </el-icon>
+              </span>
             </div>
           </div>
         </div>
@@ -155,8 +169,33 @@ defineProps({
   .green {
     color: var(--el-color-success);
   }
+
   .red {
     color: var(--el-color-error);
+  }
+
+  .card-container{
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    grid-template-rows: 1fr;
+    grid-column-gap: 15px;
+  }
+
+  .card-container > div { 
+    width: 100%;
+    max-width: 100%;
+  }
+
+  @media (max-width: 768px) {
+    .card-container{
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      grid-template-rows: repeat(2, 1fr);
+    }
+
+    .card1 { grid-area: 1 / 1 / 2 / 3; }
+    .card2 { grid-area: 2 / 1 / 3 / 2; }
+    .card3 { grid-area: 2 / 2 / 3 / 3; }
   }
   </style>
   

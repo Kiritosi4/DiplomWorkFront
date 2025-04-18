@@ -26,6 +26,14 @@ const logout = () => {
     api.logout()
     router.push('/login')
 }
+
+const navbarContentClass = ref("navbar-content")
+
+const callNavbar = () => {
+    navbarContentClass.value = navbarContentClass.value === 'navbar-content' 
+    ? 'navbar-content responsive' 
+    : 'navbar-content';
+}
 </script>
 
 <template>
@@ -34,16 +42,16 @@ const logout = () => {
             <div class="navbar-logo">
                 <span>Персональный бюджет</span>
             </div>
-            <div class="navbar-content">
+            <div :class="navbarContentClass">
                 <div class="navbar-tabs">
                     <a class="navbar-tab" :class="{ active: activeTab === 1 }" href="/">
                         Дашборд
                     </a>
+                    <a class="navbar-tab" :class="{ active: activeTab === 3 }" href="/expenses">
+                        Бюджеты
+                    </a>
                     <a class="navbar-tab" :class="{ active: activeTab === 2 }" href="/profits">
                         Доходы
-                    </a>
-                    <a class="navbar-tab" :class="{ active: activeTab === 3 }" href="/expenses">
-                        Расходы
                     </a>
                 </div>
                 <div class="user-bar">
@@ -61,6 +69,9 @@ const logout = () => {
                     <el-button type="primary" round>Войти</el-button>
                 </div>
             </div>
+            <button class="navbar-btn" @click="callNavbar">
+                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" stroke="#2f4f4f"><g id="SVGRepo_bgCarrier" stroke-width="0"></g><g id="SVGRepo_tracerCarrier" stroke-linecap="round" stroke-linejoin="round"></g><g id="SVGRepo_iconCarrier"> <path d="M4 6H20M4 12H20M4 18H20" stroke="#2f4f4f" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path> </g></svg>
+            </button>
         </div>
         
     </header>
@@ -135,6 +146,18 @@ const logout = () => {
     display: flex;
 }
 
+.navbar-btn {
+    border: none;
+    background-color: rgba(0, 0, 0, 0);
+    width: 50px;
+    height: 50px;
+    position: absolute;
+    right: 0;
+    top: 0;
+    cursor: pointer;
+    display: none;
+}
+
 .navbar-tab {
     display: block;
     padding-inline: 5px;
@@ -153,6 +176,57 @@ const logout = () => {
 
 .active {
     border-bottom: 2px solid #409eff;
+}
+
+@media only screen and (max-width: 1200px) {
+    .navbar-wrapper{
+        padding-inline: 10px;
+    }
+}
+
+@media only screen and (max-width: 768px) {
+    .navbar-wrapper{
+        flex-direction: column;
+        padding: 0 20px 0 15px;
+    }
+
+    .navbar-tabs {
+        flex-direction: column;
+        width: 100%;
+    }
+
+    .navbar-content{
+        flex-direction: column;
+        align-items: start;
+        display: none;
+        padding-bottom: 10px;
+    }
+
+    .navbar-content.responsive{
+        display: flex;
+    }
+
+    .navbar-tab{
+        width: 100%;
+    }
+
+    .user-bar{
+        align-items: start;
+        margin-top: 10px;
+    }
+
+    .user-info > img {
+        margin-right: 5px;
+        margin-left: 5px;
+    }
+
+    .logout-btn {
+        margin-left: 5px;
+    }
+
+    .navbar-btn {
+        display: block;
+    }
 }
 
 </style>

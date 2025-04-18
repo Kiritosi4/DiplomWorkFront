@@ -15,14 +15,14 @@ apiClient.interceptors.response.use(
     error => {
         switch (error.response.status) {
             case 400:
-                const errorMessage = error.response.data || "Неизвестная ошибка.";
+                const errorMessage = error.response.data || "Неизвестная ошибка";
                 ElMessage.error(errorMessage)
                 break
             case 401:
                 ElMessage.error("Вы не авторизованы")
                 break
             default:
-                ElMessage.error(error)
+                ElMessage.error("Неизвестная ошибка")
                 break
         }
 
@@ -38,6 +38,10 @@ const filterNullValues = (obj) => {
 
 const replaceNullGuids = (obj) => {
     return obj.map(item => item === null || item == "null" ? "00000000-0000-0000-0000-000000000000" : item);
+}
+
+const getTimeZoneOffset = () => {
+    return new Date().getTimezoneOffset() / -60;
 }
 
 export const me = async () => {
@@ -75,6 +79,10 @@ export const logout = async () => {
     return (await apiClient.get("users/logout")).data
 }
 
+export const getSummaryAmount = async () => {
+    return (await apiClient.get("users/summary-amount")).data
+}
+
 // === РАСХОДЫ ===
 export const getExpenses = async (offset, limit, orderBy, order, minTimestamp, maxTimestamp, categories) => {
     const params = {
@@ -84,7 +92,8 @@ export const getExpenses = async (offset, limit, orderBy, order, minTimestamp, m
         order: order,
         minTimestamp: minTimestamp,
         maxTimestamp: maxTimestamp,
-        categories: replaceNullGuids(categories)
+        categories: replaceNullGuids(categories),
+        timezone: getTimeZoneOffset()
     }
     return (await apiClient.get("expenses", { 
         params,
@@ -97,14 +106,9 @@ export const addExpense = async (expense) => {
         'Content-Type': 'application/json',
     };
 
-    if(expense.categoryId.length == 0){
-        expense.categoryId = null
-    }
-    if(expense.budgetId.length == 0){
-        expense.budgetId = null
-    }
+    const filteredData = filterNullValues(expense)
 
-    return (await apiClient.post(`expenses`, expense, { headers })).data
+    return (await apiClient.post(`expenses`, filteredData, { headers })).data
 }
 
 export const editExpense = async (id, editedExpense) => {
@@ -125,7 +129,8 @@ export const getExpensesDashboard = async (minTimestamp, maxTimestamp, categorie
     const params = {
         minTimestamp: minTimestamp,
         maxTimestamp: maxTimestamp,
-        categories: replaceNullGuids(categories)
+        categories: replaceNullGuids(categories),
+        timezoneOffset: getTimeZoneOffset()
     }
     return (await apiClient.get("expenses/dashboard", { 
         params,
@@ -178,7 +183,8 @@ export const deleteExpenseCategory = async (categoryId) => {
 export const getBudgets = async (offset, limit) => {
     const params = {
         offset: offset,
-        limit: limit
+        limit: limit,
+        timezone: getTimeZoneOffset()
     }
 
     return (await apiClient.get("budgets", { params: params})).data
@@ -207,6 +213,8 @@ export const editBudget = async (budgetId, budgetForm) => {
         filteredData["name"] = "Без названия"
     }
 
+    filteredData["TimezoneOffset"] = getTimeZoneOffset()
+
     return (await apiClient.put(`budgets/${budgetId}`, filteredData, { headers })).data
 }
 
@@ -222,5 +230,146 @@ export const getBudgetExpenses = async (budgetId, offset, limit) => {
     }
 
     return (await apiClient.get(`budgets/${budgetId}/expenses`, { params: params})).data
+}
+// ======
+
+// === РАСХОДЫ ===
+export const getProfits = async (offset, limit, orderBy, order, minTimestamp, maxTimestamp, categories) => {
+    const params = {
+        offset: offset,
+        limit: limit,
+        orderBy: orderBy,
+        order: order,
+        minTimestamp: minTimestamp,
+        maxTimestamp: maxTimestamp,
+        categories: replaceNullGuids(categories)
+    }
+    return (await apiClient.get("profits", { 
+        params,
+        paramsSerializer: params => qs.stringify(params, { arrayFormat: 'repeat' })
+    })).data
+}
+
+export const addProfit = async (profit) => {
+    const headers = {
+        'Content-Type': 'application/json',
+    };
+
+    const filteredData = filterNullValues(profit)
+
+    return (await apiClient.post(`profits`, filteredData, { headers })).data
+}
+
+export const editProfit = async (id, editedProfit) => {
+    const headers = {
+        'Content-Type': 'application/json',
+    };
+
+    editedProfit.timestamp = Math.floor(editedProfit.timestamp / 1000)
+
+    return (await apiClient.put(`profits/${id}`, editedProfit, { headers })).data
+}
+
+export const deleteProfit = async (id) => {
+    return (await apiClient.delete(`profits/${id}`)).data
+}
+
+export const getProfitsDashboard = async (minTimestamp, maxTimestamp, categories) => {
+    const params = {
+        minTimestamp: minTimestamp,
+        maxTimestamp: maxTimestamp,
+        categories: replaceNullGuids(categories),
+        timezoneOffset: getTimeZoneOffset()
+    }
+    return (await apiClient.get("profits/dashboard", { 
+        params,
+        paramsSerializer: params => qs.stringify(params, { arrayFormat: 'repeat' })
+    }))
+    .data
+}
+// ======
+
+// === КАТЕГОРИИ РАСХОДОВ ===
+export const getProfitCategories = async (offset, limit) => {
+    const params = {
+        offset: offset,
+        limit: limit
+    }
+
+    return (await apiClient.get("profits/category", { params: params})).data
+}
+
+export const addProfitCategory = async (name) => {
+    const headers = {
+        'Content-Type': 'application/json',
+    };
+
+    const params = {
+        name: name,
+    }
+
+    return (await apiClient.post(`profits/category`, params, { headers })).data
+}
+
+export const editProfitCategory = async (categoryId, name) => {
+    const headers = {
+        'Content-Type': 'application/json',
+    };
+
+    const params = {
+        name: name,
+    }
+
+    return (await apiClient.put(`profits/category/${categoryId}`, params, { headers })).data
+}
+
+export const deleteProfitCategory = async (categoryId) => {
+    
+    return (await apiClient.delete(`profits/category/${categoryId}`)).data
+}
+// ======
+
+// === ЦЕЛИ ===
+export const getTargets = async (offset, limit, filter) => {
+    const params = {
+        offset: offset,
+        limit: limit,
+        filter: filter
+    }
+
+    return (await apiClient.get("targets", { params: params})).data
+}
+
+export const addTarget = async (targetForm) => {
+    const headers = {
+        'Content-Type': 'application/json',
+    };
+
+    const filteredData = filterNullValues(targetForm)
+    if(!filteredData.hasOwnProperty('name')){
+        filteredData["name"] = "Без названия"
+    }
+
+    return (await apiClient.post(`targets`, filteredData, { headers })).data
+}
+
+export const editTargets = async (budgetId, budgetForm) => {
+    const headers = {
+        'Content-Type': 'application/json',
+    };
+
+    const filteredData = filterNullValues(budgetForm)
+    if(!filteredData.hasOwnProperty('name')){
+        filteredData["name"] = "Без названия"
+    }
+
+    filteredData["TimezoneOffset"] = getTimeZoneOffset()
+
+    return (await apiClient.put(`targets/${budgetId}`, filteredData, { headers })).data
+}
+
+export const deleteTarget = async (targetId) => {
+    
+    return (await apiClient.delete(`targets/${targetId}`)).data
 }
 // ======

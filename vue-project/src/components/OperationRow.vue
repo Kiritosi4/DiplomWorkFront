@@ -4,7 +4,8 @@ import { computed } from 'vue';
 const props = defineProps({
     category: String,
     date : String,
-    amount: Number
+    amount: Number,
+    profit: Boolean
 })
 </script>
 
@@ -12,7 +13,7 @@ const props = defineProps({
 <div class="row">
     <div class="text-info">
         <span>{{ category }}</span>
-        <span class="amount">-{{ amount }} ₽</span>
+        <span :class="profit ? 'profit' : 'amount'">{{ profit ? '+' : '-' }}{{ amount }} ₽</span>
     </div>
     <div class="date-info">
         <span>{{ date }}</span>
@@ -50,6 +51,11 @@ const props = defineProps({
 
 .amount {
     color: #f56c6c;
+    font-weight: 400;
+}
+
+.profit {
+    color: #19ad3a;
     font-weight: 400;
 }
 </style>

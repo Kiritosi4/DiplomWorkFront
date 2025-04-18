@@ -1,11 +1,11 @@
 <script setup>
 import { computed } from 'vue';
+import { Check } from '@element-plus/icons-vue';
 
 const props = defineProps({
     title: String,
     amount : Number,
     limit: Number,
-    periodInfo : String,
 })
 
 const percentage = computed(() => {
@@ -13,9 +13,9 @@ const percentage = computed(() => {
 });
 
 const customColors = [
-    { color: '#1989fa', percentage: 50 },
-    { color: '#e6a23c', percentage: 75 },
-    { color: '#f56c6c', percentage: 100 },
+    { color: '#f56c6c', percentage: 50 },
+    { color: '#1989fa', percentage: 75 },
+    { color: '#00e396', percentage: 100 },
 ]
 </script>
 
@@ -34,7 +34,7 @@ const customColors = [
         />
     </div>
     <div class="footer">
-        <span>{{ periodInfo }}</span>
+        <span style="color: green;"></span>
         <span>{{ Number(limit - amount).toFixed(2) }} ₽ осталось</span>
     </div>
 </div>
@@ -49,6 +49,7 @@ const customColors = [
     gap: 2.5px;
     padding-inline: 8px;
     padding-block: 3px;
+    position: relative;
 }
 
 .row:hover {

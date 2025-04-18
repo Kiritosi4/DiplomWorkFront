@@ -144,3 +144,10 @@ export const getMinTimestampByPeriod = (periodId) => {
 export const milisToSec = (milis) => {
     return Math.floor(milis / 1000)
 }
+
+export const secToDate = (timestampInSeconds) => {
+    // Умножаем на 1000 для преобразования в миллисекунды
+    const timestampInMilliseconds = timestampInSeconds * 1000;
+    // Создаем объект Date
+    return new Date(timestampInMilliseconds);
+}
