@@ -226,10 +226,19 @@ export const deleteBudget = async (budgetId) => {
 export const getBudgetExpenses = async (budgetId, offset, limit) => {
     const params = {
         offset: offset,
-        limit: limit
+        limit: limit,
+        timezone: getTimeZoneOffset()
     }
 
     return (await apiClient.get(`budgets/${budgetId}/expenses`, { params: params})).data
+}
+
+export const getBudgetByCategory = async (categoryId) => {
+    const params = {
+        timezone: getTimeZoneOffset()
+    }
+
+    return (await apiClient.get(`budgets/bycategory/${categoryId}`, { params: params})).data
 }
 // ======
 

@@ -11,6 +11,11 @@ import { ElMessage, ElMessageBox  } from 'element-plus'
 
 const pickedPeriod = ref([dateCalc.getStartOfMonth(), dateCalc.getEndOfDay()])
 
+const defaultTime = ref([
+  new Date(2000, 1, 1, 0, 0, 0),
+  new Date(2000, 2, 1, 23, 59, 59),
+])
+
 const getMinPickedTimestampSec = () => pickedPeriod.value === null ? 0 : dateCalc.milisToSec(pickedPeriod.value[0].valueOf())
 const getMaxPickedTimestampSec = () => pickedPeriod.value === null ? 0 : dateCalc.milisToSec(pickedPeriod.value[1].valueOf())
 
@@ -240,25 +245,15 @@ const callEditTargetTab = (target) => {
     targetFormVisible.value = true
 }
 
-const closeTarget = (targetId) => {
-    const closedTarget = targets[targetId]
-    const closedTargetForm = {
-        "name": closedTarget.name,
-        "limit": closedTarget.limit,
-        "amount": closedTarget.amount,
-        "closed": true
-    }
-    
-    if(hasEditingTarget){
-        closedTargetForm = targetFormBody
-        closedTargetForm.closed = true
-    }
+const changeTargetState = () => {
+    targetFormBody.closed = !targetFormBody.closed
 
-    api.editTargets(targetId, closedTargetForm).then((response) => {
-        targets[response.id] = response
-
-        ElMessage.success("Цель помечена как достигнутая.")
+    api.editTargets(editingTargetId.value, targetFormBody).then((response) => {
         clearTargetForm()
+        delete targets[response.id]
+        
+        const msg = targetFormBody.closed ? "Цель помечена как достигнутая." : "Цель помечена как недостигнутая."
+        ElMessage.success(msg)
     })
 }
 
@@ -646,20 +641,24 @@ const refreshCharts = () => {
         piechartLabels.value = Object.keys(response.pieChartData)
 
         profitsSum.value = response.totalAmount
+        /*
         if(response.lastTotalAmount != 0){
             profitsSumDiff.value = profitsSum.value / response.lastTotalAmount * 100
             profitsSumDiff.value = Number(profitsSumDiff.value.toFixed(2));
         }else{
             profitsSumDiff.value = 0.0
         }
-
+        */
+       
         operationAmount.value = response.totalOperations
+        /*
         if(response.lastTotalOperations != 0){
             operationAmountDiff.value = operationAmount.value / response.lastTotalOperations * 100
             operationAmountDiff.value = Number(operationAmountDiff.value.toFixed(2));
         }else{
             operationAmountDiff.value = 0.0
         }
+        */
     }))
 }
 // ======
@@ -740,7 +739,7 @@ api.getSummaryAmount()
                         type="daterange"
                         unlink-panels
                         range-separator="-"
-                        :default-time="pickedPeriod"
+                        :default-time="defaultTime"
                         start-placeholder="От"
                         end-placeholder="До"
                         :shortcuts="dateCalc.calendarShortcuts"
@@ -953,7 +952,7 @@ api.getSummaryAmount()
             <el-form-item label="Накоплено">
                 <el-input-number 
                 v-model="targetFormBody.amount" 
-                :min="0.01"
+                :min="0"
                 :precision="2"
                 :max="100000000000000"
                 style="width: 100%;">
@@ -981,7 +980,7 @@ api.getSummaryAmount()
                 <div v-if="hasEditingTarget">
                     <el-button type="danger" @click="deleteTarget">Удалить</el-button>
                     <el-button type="warning" @click="editTarget">Изменить</el-button>
-                    <el-button type="primary" @click="editTarget">Отметить как достигнутую</el-button>
+                    <el-button type="primary" @click="changeTargetState">{{ targetFormBody.closed ? 'Отметить как недостигнутую' : 'Отметить как достигнутую' }}  </el-button>
                 </div>
                 <el-button v-else type="primary" @click="addTarget">Добавить</el-button>
             </div>

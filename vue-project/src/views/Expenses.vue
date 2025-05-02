@@ -7,10 +7,14 @@ import * as dateCalc from '@/api/dateCalculator';
 import OperationRow from '@/components/OperationRow.vue';
 import * as api from '@/api/api';
 import { ElMessage, ElMessageBox  } from 'element-plus'
-import ru from 'element-plus/dist/locale/ru.mjs'
 
 
 const pickedPeriod = ref([dateCalc.getStartOfMonth(), dateCalc.getEndOfDay()])
+
+const defaultTime = ref([
+  new Date(2000, 1, 1, 0, 0, 0),
+  new Date(2000, 2, 1, 23, 59, 59),
+])
 
 const getMinPickedTimestampSec = () => pickedPeriod.value === null ? 0 : dateCalc.milisToSec(pickedPeriod.value[0].valueOf())
 const getMaxPickedTimestampSec = () => pickedPeriod.value === null ? 0 : dateCalc.milisToSec(pickedPeriod.value[1].valueOf())
@@ -58,7 +62,6 @@ const categoriesLimit = 15
 let totalCategories = 1000
 
 const loadCategories = () => {
-    console.log(Object.keys(categories).length, totalCategories)
     if(Object.keys(categories).length - 1 >= totalCategories){
         return
     }
@@ -110,6 +113,12 @@ const deleteCategory = () => {
                 expense.categoryId = null
             }
             return expense
+        })
+
+        Object.values(budgets).forEach(budget => {
+            if(budget.categoryId === editingCategoryId.value){
+                budget.categoryId = null
+            }
         })
 
         refreshCharts()
@@ -249,7 +258,7 @@ const pickedBudgetPeriod = ref([0, 0])
 
 const budgetFormBody = reactive({
     "name": "",
-    "category": null,
+    "categoryId": null,
     "limit": 0,
     "periodType": 2,
     get startPeriod() {
@@ -263,7 +272,7 @@ const budgetFormBody = reactive({
 
 const callEditBudgetTab = (budget) => {
     budgetFormBody.name = budget.name
-    budgetFormBody.category = budget.category
+    budgetFormBody.categoryId = budget.categoryId
     budgetFormBody.limit = budget.limit
 
     budgetFormBody.periodType = budget.periodType
@@ -326,7 +335,7 @@ const addBudget = () => {
 
 const clearBudgetForm = () => {
     budgetFormVisible.value = false
-    budgetFormBody.category = "",
+    budgetFormBody.categoryId = "",
     budgetFormBody.limit = 0,
     budgetFormBody.name = ""
     budgetFormBody.periodType = 2
@@ -636,7 +645,6 @@ const deleteOperation = () => {
         const deletedExpense = expenses.value[index]
 
         // Обновление связанного бюджета
-        // TODO : ДОБАВИТЬ ПРОВЕРКУ ВРЕМЕНИ ВХОЖДЕНИЯ В БЮДЖЕТ
         const myBudget = budgets[deletedExpense.budgetId]
         if(myBudget !== undefined && myBudget.startPeriod <= deletedExpense.createdAt && deletedExpense.createdAt <= myBudget.endPeriod){
             myBudget.amount -= deletedExpense.amount
@@ -721,8 +729,17 @@ const addOperationConfirm = (expenseBudget) => {
 const onExpenseFormCategoryChanged = (val) => {
     if(expenseFormBody.budgetId === "" || expenseFormBody.budgetId == null){
         const foundedBudget = Object.values(budgets).find(budget => budget.categoryId === val)
+
         if(foundedBudget !== undefined){
             expenseFormBody.budgetId = foundedBudget.id
+        }else{
+            api.getBudgetByCategory(expenseFormBody.categoryId)
+            .then((response) => {
+                if(response != ""){
+                    budgets[response.id] = response
+                    expenseFormBody.budgetId = response.id 
+                }
+            })
         }
     }
     
@@ -804,20 +821,24 @@ const refreshCharts = () => {
         piechartLabels.value = Object.keys(response.pieChartData)
 
         expensesSum.value = response.totalAmount
+
+        /*
         if(response.lastTotalAmount != 0){
             expensesSumDiff.value = expensesSum.value / response.lastTotalAmount * 100
             expensesSumDiff.value = Number(expensesSumDiff.value.toFixed(2));
         }else{
             expensesSumDiff.value = 0.0
         }
+        */
 
         operationAmount.value = response.totalOperations
+        /*
         if(response.lastTotalOperations != 0){
             operationAmountDiff.value = operationAmount.value / response.lastTotalOperations * 100
             operationAmountDiff.value = Number(operationAmountDiff.value.toFixed(2));
         }else{
             operationAmountDiff.value = 0.0
-        }
+        }*/
     }))
 }
 // ======
@@ -898,7 +919,7 @@ api.getSummaryAmount()
                         type="daterange"
                         unlink-panels
                         range-separator="-"
-                        :default-time="pickedPeriod"
+                        :default-time="defaultTime"
                         start-placeholder="От"
                         end-placeholder="До"
                         :shortcuts="dateCalc.calendarShortcuts"
@@ -1116,7 +1137,7 @@ api.getSummaryAmount()
             </el-form-item>
             <el-form-item label="Категория">
                 <el-select-v2
-                    v-model="budgetFormBody.category"
+                    v-model="budgetFormBody.categoryId"
                     :options="categories_selector_options"
                     placeholder="Прочее"
                     style="min-width: 150px; margin-right: 16px; vertical-align: middle; width: 100%;"
@@ -1177,6 +1198,7 @@ api.getSummaryAmount()
                 end-placeholder="До"
                 style="width: 100%;"
                 value-format="x"
+                :default-time="defaultTime"
             />
             </el-form-item>
         </el-form>

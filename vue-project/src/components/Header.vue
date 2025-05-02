@@ -44,14 +44,11 @@ const callNavbar = () => {
             </div>
             <div :class="navbarContentClass">
                 <div class="navbar-tabs">
-                    <a class="navbar-tab" :class="{ active: activeTab === 1 }" href="/">
-                        Дашборд
-                    </a>
-                    <a class="navbar-tab" :class="{ active: activeTab === 3 }" href="/expenses">
-                        Бюджеты
+                    <a class="navbar-tab" :class="{ active: activeTab === 3 }" href="/">
+                        Бюджеты и расходы
                     </a>
                     <a class="navbar-tab" :class="{ active: activeTab === 2 }" href="/profits">
-                        Доходы
+                        Цели и доходы
                     </a>
                 </div>
                 <div class="user-bar">

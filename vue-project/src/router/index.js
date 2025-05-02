@@ -1,5 +1,4 @@
 import { createRouter, createWebHistory } from 'vue-router'
-import Dashboard from '../views/Dashboard.vue'
 import Login from '../views/Login.vue'
 import Register from '../views/Register.vue'
 import Expenses from '@/views/Expenses.vue'
@@ -10,8 +9,8 @@ const router = createRouter({
   routes: [
     {
       path: '/',
-      name: 'dashboard',
-      component: Dashboard,
+      name: 'expenses',
+      component: Expenses,
     },
     {
       path: '/login',
@@ -22,11 +21,6 @@ const router = createRouter({
       path: '/register',
       name: 'register',
       component: Register,
-    },
-    {
-      path: '/expenses',
-      name: 'expenses',
-      component: Expenses,
     },
     {
       path: '/profits',
