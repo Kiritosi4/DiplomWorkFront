@@ -1140,7 +1140,7 @@ h1 {
     }
 }
 
-@media (max-width: 1200px) {
+@media (max-width: 1700px) {
     .wrapper {
         padding-inline: 2%;
     }

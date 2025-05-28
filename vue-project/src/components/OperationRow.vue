@@ -23,11 +23,11 @@ const props = defineProps({
 
 <style scoped>
 .row {
-    min-height: 45px;
+    
     display: flex;
     flex-direction: column;
     transition: .3s;
-    padding: 5px;
+    padding: 7px 5px;
     border-radius: 4px;
 }
 
