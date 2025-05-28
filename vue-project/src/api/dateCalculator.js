@@ -11,19 +11,18 @@ export const getEndOfDay = () => {
 export const getStartOfWeek = () => {
     const now = new Date();
     const dayOfWeek = now.getDay(); 
-    const mondayOffset = dayOfWeek === 0 ? -6 : 1; 
-    const startOfWeek = new Date(now);
+    const mondayOffset = (dayOfWeek === 0 ? -6 : 1) - dayOfWeek; 
+    const mondayDate = new Date(now);
     
-    startOfWeek.setDate(now.getDate() + mondayOffset);
-    
-    startOfWeek.setHours(0, 0, 0, 0);
-    
-    return startOfWeek;
+    mondayDate.setDate(now.getDate() + mondayOffset);
+    mondayDate.setHours(0, 0, 0, 0); 
+
+    return mondayDate;
 }
 
 export const getEndOfWeek = () => {
     const now = new Date();
-    const lastDayOfWeek = now.getDate() + (6 - now.getDay()); // Последний день недели (суббота)
+    const lastDayOfWeek = now.getDate() + (6 - now.getDay()); 
     return new Date(now.getFullYear(), now.getMonth(), lastDayOfWeek, 23, 59, 59, 999);
 }
 
@@ -34,7 +33,7 @@ export const getStartOfMonth = () => {
 
 export const getEndOfMonth = () => {
     const now = new Date();
-    const lastDayOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate(); // Получаем последний день текущего месяца
+    const lastDayOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate(); 
     return new Date(now.getFullYear(), now.getMonth(), lastDayOfMonth, 23, 59, 59, 999);
 }
 
@@ -45,7 +44,7 @@ export const getStartOfYear = () => {
 
 export const getEndOfYear = () => {
     const now = new Date();
-    return new Date(now.getFullYear(), 11, 31, 23, 59, 59, 999); // Декабрь (11) - последний месяц года
+    return new Date(now.getFullYear(), 11, 31, 23, 59, 59, 999); 
 }
 
 export const calendarShortcuts = [
@@ -146,8 +145,8 @@ export const milisToSec = (milis) => {
 }
 
 export const secToDate = (timestampInSeconds) => {
-    // Умножаем на 1000 для преобразования в миллисекунды
+    
     const timestampInMilliseconds = timestampInSeconds * 1000;
-    // Создаем объект Date
+    
     return new Date(timestampInMilliseconds);
 }

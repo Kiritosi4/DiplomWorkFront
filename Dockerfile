@@ -11,4 +11,4 @@ RUN npm install -g @vue/cli-service
 RUN npm run build
 EXPOSE 4173
 
-CMD ["npm", "run", "preview"]
+CMD ["npm", "run", "preview", "--", "--port", "4173", "--host"]

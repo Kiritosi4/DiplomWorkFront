@@ -118,7 +118,9 @@ export const editExpense = async (id, editedExpense) => {
 
     editedExpense.timestamp = Math.floor(editedExpense.timestamp / 1000)
 
-    return (await apiClient.put(`expenses/${id}`, editedExpense, { headers })).data
+    const filteredData = filterNullValues(editedExpense)
+
+    return (await apiClient.put(`expenses/${id}`, filteredData, { headers })).data
 }
 
 export const deleteExpense = async (id) => {
@@ -276,7 +278,9 @@ export const editProfit = async (id, editedProfit) => {
 
     editedProfit.timestamp = Math.floor(editedProfit.timestamp / 1000)
 
-    return (await apiClient.put(`profits/${id}`, editedProfit, { headers })).data
+    const filteredData = filterNullValues(editedProfit)
+
+    return (await apiClient.put(`profits/${id}`, filteredData, { headers })).data
 }
 
 export const deleteProfit = async (id) => {

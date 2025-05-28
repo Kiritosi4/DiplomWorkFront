@@ -1,24 +1,30 @@
 <script setup>
 import { useRouter } from 'vue-router';
 import * as api from '@/api/api';
+import { ref } from "vue"
 
 const router = useRouter();
 
-const login = () => {
-    const email = document.getElementById("email").value;
-    const password = document.getElementById("password").value;
+const email = ref('');
+const password = ref('');
 
+const login = () => {
+    
     const emailPattern = /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/;
-    if (!emailPattern.test(email)) {
+    if (!emailPattern.test(email.value) || email.value.length > 256) {
         alert("Введите корректный email.");
         return;
     }
-    if (password.length < 8) {
+    if (password.value.length < 8) {
         alert("Пароль должен содержать не менее 8 символов.");
         return;
     }
+    if (password.value.length > 128) {
+        alert("Пароль должен быть короче 128 символов.");
+        return;
+    }
 
-    api.login(email, password)
+    api.login(email.value, password.value)
     .then((response) => {
         router.push("/")
     })
@@ -30,8 +36,8 @@ const login = () => {
 <div class="login-form-container">
     <span>Вход</span>
     <div class="login-form">
-        <input type="email" id="email" placeholder="Email" required>
-        <input type="password" id="password" inlength="8" required placeholder="Пароль">
+        <input type="email" id="email" placeholder="Email" required v-model="email">
+        <input type="password" id="password" inlength="8" required placeholder="Пароль" v-model="password">
         <el-button type="primary" class="submit-btn" @click="login()">Войти</el-button>
         <a href="/register">Зарегистрироваться</a>
     </div>

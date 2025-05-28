@@ -293,7 +293,6 @@ const callTargetForm = () => {
 const addTarget = () => {
     api.addTarget(targetFormBody)
     .then((response) => {
-        response.amount = 0
         targets[response.id] = response
 
         ElMessage.success("Новая цель создана")
@@ -557,7 +556,7 @@ const addOperation = () => {
     .then((response) => {
         clearOperationList()
         loadOperations()
-        summaryAmount.value -= profitFormBody.amount
+        summaryAmount.value += profitFormBody.amount
 
         ElMessage.success("Новая запись о доходе добавлена.")
         clearAddOperationForm()
@@ -938,6 +937,7 @@ api.getSummaryAmount()
                 <el-input v-model="targetFormBody.name" :min="0.01" style="width: 100%;" maxlength="32" show-word-limit minlength="1"/>
             </el-form-item>
             <el-form-item label="Прогресс" v-if="hasEditingTarget">
+
                 <el-progress 
                 :percentage="Math.floor((targetFormBody.amount / targetFormBody.limit) * 100)" 
                 :color="[
@@ -946,8 +946,9 @@ api.getSummaryAmount()
                     { color: '#00e396', percentage: 100 },
                 ]" 
                 :stroke-width="8"
-                style="width: 100%"
+                style="width: 100%;"
                 />
+                <span style="height: 25px; margin-inline: auto;">{{ Math.max(0, Number( targetFormBody.limit - targetFormBody.amount).toFixed(2))  }} ₽ осталось</span>
             </el-form-item>
             <el-form-item label="Накоплено">
                 <el-input-number 
@@ -980,7 +981,7 @@ api.getSummaryAmount()
                 <div v-if="hasEditingTarget">
                     <el-button type="danger" @click="deleteTarget">Удалить</el-button>
                     <el-button type="warning" @click="editTarget">Изменить</el-button>
-                    <el-button type="primary" @click="changeTargetState">{{ targetFormBody.closed ? 'Отметить как недостигнутую' : 'Отметить как достигнутую' }}  </el-button>
+                    <el-button type="primary" @click="changeTargetState" class="target-state-btn">{{ targetFormBody.closed ? 'Отметить как недостигнутую' : 'Отметить как достигнутую' }}  </el-button>
                 </div>
                 <el-button v-else type="primary" @click="addTarget">Добавить</el-button>
             </div>
@@ -1182,6 +1183,10 @@ h1 {
 @media (max-width: 600px) {
     .targets-list-toolbar {
         flex-direction: column;
+    }
+
+    .target-state-btn{
+        margin-top: 10px;
     }
 }
 </style>

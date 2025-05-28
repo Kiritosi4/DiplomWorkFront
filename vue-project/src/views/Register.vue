@@ -2,29 +2,46 @@
 import * as api from '@/api/api';
 import { ElMessage } from 'element-plus'
 import { useRouter } from 'vue-router';
+import { ref } from "vue"
 
 const router = useRouter();
 
+const email = ref('')
+const name = ref('')
+const password = ref('')
+const password_confirm = ref('')
+
 const register = () => {
-    const email = document.getElementById("email").value;
-    const name = document.getElementById("name").value;
-    const password = document.getElementById("password").value;
+    
 
     const emailPattern = /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/;
-    if (!emailPattern.test(email)) {
+    if (!emailPattern.test(email.value) || email.value.length > 256) {
         alert("Введите корректный email.");
         return;
     }
-    if (name.length < 2) {
+    if (name.value.length < 2) {
         alert("Имя должно быть длиннее 2 символов.");
         return;
     }
-    if (password.length < 8) {
+    if (name.value.length > 128) {
+        alert("Имя должно быть короче 128 символов.");
+        return;
+    }
+    if (password.value.length < 8) {
         alert("Пароль должен содержать не менее 8 символов.");
         return;
     }
+    if (password.value.length > 128) {
+        alert("Пароль должен быть короче 128 символов.");
+        return;
+    }
 
-    api.register(email, name, password)
+    if (password.value !== password_confirm.value){
+        alert("Пароли не совпадают.");
+        return;
+    }
+
+    api.register(email.value, name.value, password.value)
     .then((response) => {
         router.push("/")
     })
@@ -36,9 +53,10 @@ const register = () => {
 <div class="login-form-container">
     <span>Регистрация</span>
     <div class="login-form">
-        <input type="email" id="email" placeholder="Email" required>
-        <input type="text" id="name" placeholder="Имя" required minlength="2">
-        <input type="password" id="password" minlength="8" required placeholder="Пароль">
+        <input type="email" id="email" placeholder="Email" required v-model="email">
+        <input type="text" id="name" placeholder="Имя" required minlength="2" v-model="name">
+        <input type="password" id="password" minlength="8" required placeholder="Пароль" v-model="password">
+        <input type="password" id="password_confirm" minlength="8" required placeholder="Подтвердите пароль" v-model="password_confirm">
         <el-button type="primary" class="submit-btn" @click="register()">Зарегистрироваться</el-button>
     </div>
     

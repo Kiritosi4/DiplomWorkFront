@@ -96,7 +96,6 @@ const editCategory = () => {
     if (currCategoryName.value) {
         api.editExpenseCategory(editingCategoryId.value, currCategoryName.value)
         .then(() => {
-            console.log(currCategoryName.value)
             categories[editingCategoryId.value]["name"] = currCategoryName.value.slice()
             ElMessage.success("Категория изменена.")
             clearAddCategoryTab()
@@ -283,6 +282,8 @@ const callEditBudgetTab = (budget) => {
 
     editingBudgetId.value = budget.id
 
+    console.log(budgets[editingBudgetId.value])
+
     hasEditingBudget.value = true
     budgetFormVisible.value = true
 
@@ -341,12 +342,22 @@ const clearBudgetForm = () => {
     budgetFormBody.periodType = 2
     pickedBudgetPeriod.value = [0,0]
 
-    if(hasEditingBudget && pickedPeriod.value !== null){
-        const filteredExpenses =  expenses.value.filter(item => 
-            item.createdAt > getMinPickedTimestampSec() && item.createdAt < getMaxPickedTimestampSec()
-        )
+    if(hasEditingBudget){
+        if(pickedPeriod.value !== null){
+            const filteredExpenses =  expenses.value.filter(item => 
+                item.createdAt >= getMinPickedTimestampSec() && item.createdAt < getMaxPickedTimestampSec()
+            )
 
-        expenses.value = filteredExpenses
+            expenses.value = filteredExpenses
+        }
+
+        if(selected_categories.value.length > 0){
+            const filteredExpenses =  expenses.value.filter(item => 
+                Object.values(selected_categories.value).includes(item.categoryId)
+            )
+
+            expenses.value = filteredExpenses
+        }
 
         budgetExpensesListOffset = 0
         totalBudgetExpenses = 1000
@@ -602,20 +613,20 @@ const editOperationConfirm = (editedExpense, currBudget) => {
         //Изменение связанного бюджета
         if(editedExpense.budgetId === expenseFormBody.budgetId) {
             if(currBudget !== undefined){
-                const prevTimestampInPeriod = editedExpense.createdAt >= currBudget.startPeriod && editedExpense.createdAt <= currBudget.endPeriod
-                if(expenseFormBody.timestamp >= currBudget.startPeriod && expenseFormBody.timestamp <= currBudget.endPeriod){
+                const prevTimestampInPeriod = editedExpense.createdAt >= currBudget.startPeriod && editedExpense.createdAt < currBudget.endPeriod
+                if(expenseFormBody.timestamp >= currBudget.startPeriod && expenseFormBody.timestamp < currBudget.endPeriod){
                     if(prevTimestampInPeriod){
                         currBudget.amount -= amountDiff
                     }else{
-                        currBudget.amount += editedExpense.amount
+                        currBudget.amount += expenseFormBody.amount
                     }
                 }else if(prevTimestampInPeriod){
-                    currBudget.amount -= editedExpense.amount
+                    currBudget.amount -= expenseFormBody.amount
                 }
             }
         }else{
             if(currBudget !== undefined){
-                if(editedExpense.createdAt >= currBudget.startPeriod && editedExpense.createdAt <= currBudget.endPeriod){
+                if(editedExpense.createdAt >= currBudget.startPeriod && editedExpense.createdAt < currBudget.endPeriod){
                     currBudget.amount -= editedExpense.amount
                 }
             }
@@ -623,7 +634,7 @@ const editOperationConfirm = (editedExpense, currBudget) => {
             const newBudget = budgets[expenseFormBody.budgetId];
             if(newBudget !== undefined){
                 
-                if(editedExpense.createdAt > newBudget.startPeriod && editedExpense.createdAt < newBudget.endPeriod){
+                if(expenseFormBody.createdAt > newBudget.startPeriod && expenseFormBody.createdAt < newBudget.endPeriod){
                     newBudget.amount += expenseFormBody.amount
                 }
             }
@@ -924,7 +935,6 @@ api.getSummaryAmount()
                         end-placeholder="До"
                         :shortcuts="dateCalc.calendarShortcuts"
                         @change="onPeriodChanged()"
-                        style="max-width: 400px; min-width: 250px;"
                     />
                 </div>
             </div>
@@ -1120,6 +1130,31 @@ api.getSummaryAmount()
     <!-- БЮДЖЕТ -->
     <el-dialog v-model="budgetFormVisible" :title="getBudgetFormTitle()"  style="width: 90%; max-width: 600px;" @close="clearBudgetForm">
         <el-form :model="budgetFormBody" label-width="auto" >
+            <el-form-item label="Период" class="budget-up-datepicker">
+                <el-select-v2
+                v-model="budgetFormBody.periodType"
+                :options="budgetPeriodList"
+                placeholder="Выберите период"
+                style="min-width: 150px; vertical-align: middle; width: 100%"
+                />
+            </el-form-item>
+            <el-form-item
+            v-if="budgetFormBody.periodType === 4"
+            class="budget-up-datepicker"
+            >
+            <el-date-picker
+                v-model="pickedBudgetPeriod"
+                type="daterange"
+                unlink-panels
+                range-separator="-"
+                start-placeholder="От"
+                end-placeholder="До"
+                style="width: 100%;"
+                value-format="x"
+                :default-time="defaultTime"
+            />
+            </el-form-item>
+
             <el-form-item label="Название">
                 <el-input v-model="budgetFormBody.name" :min="0.01" style="width: 100%;" maxlength="32" show-word-limit minlength="1"/>
             </el-form-item>
@@ -1135,6 +1170,7 @@ api.getSummaryAmount()
                     </template>
                 </el-input-number>
             </el-form-item>
+            
             <el-form-item label="Категория">
                 <el-select-v2
                     v-model="budgetFormBody.categoryId"
@@ -1178,7 +1214,7 @@ api.getSummaryAmount()
                         </template>
                     </el-select-v2>
             </el-form-item>
-            <el-form-item label="Период">
+            <el-form-item label="Период" class="budget-down-datepicker">
                 <el-select-v2
                 v-model="budgetFormBody.periodType"
                 :options="budgetPeriodList"
@@ -1188,6 +1224,7 @@ api.getSummaryAmount()
             </el-form-item>
             <el-form-item
             v-if="budgetFormBody.periodType === 4"
+            class="budget-down-datepicker"
             >
             <el-date-picker
                 v-model="pickedBudgetPeriod"
@@ -1201,6 +1238,20 @@ api.getSummaryAmount()
                 :default-time="defaultTime"
             />
             </el-form-item>
+            <el-form-item label="Потрачено" v-if="hasEditingBudget">
+                <el-progress 
+                :percentage="Math.floor(( budgets[editingBudgetId].amount / budgetFormBody.limit) * 100)" 
+                :color="[
+                    { color: '#1989fa', percentage: 50 },
+                    { color: '#e6a23c', percentage: 75 },
+                    { color: '#f56c6c', percentage: 100 },
+                ]" 
+                :stroke-width="8"
+                style="width: 100%;"
+                />
+                <span style="height: 25px; margin-right: auto;">{{ budgets[editingBudgetId].amount }} / {{ budgetFormBody.limit }} ₽</span>
+                <span style="height: 25px; margin-left: auto;">{{ Math.max(0, Number( budgetFormBody.limit - budgets[editingBudgetId].amount).toFixed(2)) }} ₽ осталось</span>
+            </el-form-item>
         </el-form>
         <template #footer>
             <div class="dialog-footer">
@@ -1213,7 +1264,7 @@ api.getSummaryAmount()
             </div>
             <div v-if="hasEditingBudget" class="expenses-container" style="padding-top: 15px;">
                 <div class="expenses-container-toolbar" style="border-top: 1px solid #dcdfe6; padding-top: 15px;">
-                    <span style="font-size: 1.1rem; font-weight: 400;">Связанные расходы</span>
+                    <span style="font-size: 1.1rem; font-weight: 400; text-align: left;">Связанные расходы</span>
                     <el-select-v2
                     v-model="selected_expenses_sort"
                     :options="expenses_sort_options"
@@ -1222,7 +1273,7 @@ api.getSummaryAmount()
                     @change="onExpensesSortChanged()"
                     />
                 </div>
-                <div  class="operation-list" v-infinite-scroll="loadBudgetExpenses" style="overflow: auto">
+                <div class="operation-list budget-expenses" v-infinite-scroll="loadBudgetExpenses" style="overflow: auto; text-align: right;">
                     <OperationRow 
                         v-for="item in budgetExpenses"
                         :key="item.id"
@@ -1336,6 +1387,10 @@ h1 {
     max-height: 660px;
 }
 
+.budget-expenses {
+    max-height: 276px;
+}
+
 .toolbar-tools{
     display: flex;
     align-items: flex-end;
@@ -1390,11 +1445,44 @@ h1 {
     .operation-list {
         max-height: 295px;
     }
-}
 
-@media (max-width: 1024px) {
     .toolbar-tools{
         flex-wrap: wrap;
     }
 }
+
+.budget-up-datepicker{
+    display: none;
+}
+
+@media (max-width: 750px) {
+    :global(.el-date-range-picker) {
+        width: 100% !important;
+    }
+    :global(.el-picker-panel__body) {
+        display: flex;
+        flex-direction: column;
+        min-width: 0px !important;
+    }
+
+    :global(.el-picker-panel__content.el-date-range-picker__content) {
+        width: 100% !important;
+    }
+
+    :global(.el-picker-panel__sidebar){
+        width: 95px;
+    }
+
+    .budget-down-datepicker{
+        display: none;
+    }
+
+    .budget-up-datepicker{
+        display: flex;
+    }
+
+}
+
+
+
 </style>
