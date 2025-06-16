@@ -225,14 +225,16 @@ export const deleteBudget = async (budgetId) => {
     return (await apiClient.delete(`budgets/${budgetId}`)).data
 }
 
-export const getBudgetExpenses = async (budgetId, offset, limit) => {
+export const getBudgetExpenses = async (budgetId, offset, limit, orderBy, order) => {
     const params = {
         offset: offset,
         limit: limit,
-        timezone: getTimeZoneOffset()
+        timezone: getTimeZoneOffset(),
+        orderBy: orderBy,
+        order: order,
     }
 
-    return (await apiClient.get(`budgets/${budgetId}/expenses`, { params: params})).data
+    return (await apiClient.get(`budgets/${budgetId}/expenses`, { params: params })).data
 }
 
 export const getBudgetByCategory = async (categoryId) => {

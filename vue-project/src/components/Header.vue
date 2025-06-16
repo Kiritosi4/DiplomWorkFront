@@ -44,12 +44,12 @@ const callNavbar = () => {
             </div>
             <div :class="navbarContentClass">
                 <div class="navbar-tabs">
-                    <a class="navbar-tab" :class="{ active: activeTab === 3 }" href="/">
+                    <router-link class="navbar-tab" :class="{ active: activeTab === 3 }" to="/">
                         Бюджеты и расходы
-                    </a>
-                    <a class="navbar-tab" :class="{ active: activeTab === 2 }" href="/profits">
+                    </router-link>
+                    <router-link class="navbar-tab" :class="{ active: activeTab === 2 }" to="/profits">
                         Цели и доходы
-                    </a>
+                    </router-link>
                 </div>
                 <div class="user-bar">
                     <div class="user-info">

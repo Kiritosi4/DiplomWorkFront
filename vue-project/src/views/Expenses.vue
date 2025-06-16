@@ -253,6 +253,20 @@ const getBudgetFormTitle = () => {
     return hasEditingBudget.value ? "Редактирование бюджета" : "Добавление бюджета"
 }
 
+const selected_budget_expenses_sort = ref({
+    order: "desc",
+    orderBy: "CreatedAt"
+})
+
+const onBudgetExpensesSortChanged = () => {
+    if(budgetExpensesListOffset < totalBudgetExpenses){
+        budgetExpensesListOffset = 0
+        totalBudgetExpenses = 1000
+    }
+
+    loadBudgetExpenses()
+}
+
 const pickedBudgetPeriod = ref([0, 0])
 
 const budgetFormBody = reactive({
@@ -281,8 +295,6 @@ const callEditBudgetTab = (budget) => {
     }
 
     editingBudgetId.value = budget.id
-
-    console.log(budgets[editingBudgetId.value])
 
     hasEditingBudget.value = true
     budgetFormVisible.value = true
@@ -361,6 +373,7 @@ const clearBudgetForm = () => {
 
         budgetExpensesListOffset = 0
         totalBudgetExpenses = 1000
+
     }
 }
 
@@ -380,9 +393,18 @@ const budgetsListForDropdown = computed(() => {
 
 // = Расходы бюджета =
 const budgetExpenses = computed(() => {
-    return expenses.value.filter(item => 
+    let filteredBudgetExpenses = expenses.value.filter(item => 
         item.budgetId === editingBudgetId.value
     )
+
+    let sortedBudgetExpenses = []
+    if(selected_budget_expenses_sort.value.orderBy === "Amount"){
+        sortedBudgetExpenses = filteredBudgetExpenses.sort((a,b) => selected_budget_expenses_sort.value.order === "desc" ? b.amount - a.amount : a.amount - b.amount)
+    }else{
+        sortedBudgetExpenses = filteredBudgetExpenses.sort((a,b) => selected_budget_expenses_sort.value.order === "desc" ? b.createdAt - a.createdAt : a.createdAt - b.createdAt)
+    }
+
+    return sortedBudgetExpenses
 });
 
 let budgetExpensesListOffset = 0
@@ -397,7 +419,9 @@ const loadBudgetExpenses = () => {
     api.getBudgetExpenses(
         editingBudgetId.value,
         budgetExpensesListOffset,
-        budgetExpensesListLimit
+        budgetExpensesListLimit,
+        selected_budget_expenses_sort.value.orderBy,
+        selected_budget_expenses_sort.value.order
     )
     .then((response => {
         totalBudgetExpenses = response.total
@@ -424,15 +448,27 @@ const loadBudgetExpenses = () => {
 // === Расходы ===
 const expenses = ref([])
 
-const sortedExpenses = computed(() => {
-    const sortKey = selected_expenses_sort.value["orderBy"]
-    return expenses.value.slice().sort((a,b) => selected_expenses_sort.value["order"] === "asc" ? b[sortKey] - a[sortKey] : a[sortKey] - b[sortKey])
-});
+const filteredExpensesList = computed(() => {
+    if(hasEditingBudget.value){
+        let filteredExpenses = expenses.value
 
-const sortExpenses = () => {
-    const sortKey = selected_expenses_sort.value["orderBy"]
-    expenses.value.sort((a,b) => selected_expenses_sort.value["order"] === "asc" ? b[sortKey] - a[sortKey] : a[sortKey] - b[sortKey])
-}
+        if(pickedPeriod.value !== null){
+            filteredExpenses =  expenses.value.filter(item => 
+                item.createdAt >= getMinPickedTimestampSec() && item.createdAt < getMaxPickedTimestampSec()
+            )
+        }
+
+        if(selected_categories.value.length > 0){
+            filteredExpenses =  expenses.value.filter(item => 
+                Object.values(selected_categories.value).includes(item.categoryId)
+            )
+        }
+
+        return filteredExpenses
+    }
+
+    return expenses.value
+});
 
 
 let expensesListOffset = 0
@@ -455,9 +491,13 @@ const loadOperations = () => {
     )
     .then((response => {
         totalExpenses = response.total
+        
+        const existsIds = new Set(expenses.value.map(expense => expense.id));
 
         response.data.forEach(expense => {
-            expenses.value.push(expense)
+            if(!existsIds.has(expense.id)){
+                expenses.value.push(expense)
+            }
         })
 
         response.categories.forEach(category => {
@@ -643,6 +683,9 @@ const editOperationConfirm = (editedExpense, currBudget) => {
         clearOperationList()
         loadOperations()
         refreshCharts()
+        if(hasEditingBudget){
+            loadBudgetExpenses()
+        }
 
         ElMessage.success("Запись о расходе изменена.")
         clearAddOperationForm()
@@ -766,9 +809,49 @@ const clearAddOperationForm = () => {
 // ======
 
 // === Графики ===
-const mainchart_options = {}
+const mainchart_options = {
+    chart: {
+        type: 'line',
+        zoom: {
+            enabled: true,
+            type: 'x',  
+            autoScaleYaxis: false, 
+            allowMouseWheelZoom: true,
+        },
+        toolbar: {
+        show: true,
+        offsetX: 0,
+        offsetY: 0,
+        tools: {
+          download: true,
+          selection: true,
+          zoom: true,
+          zoomin: true,
+          zoomout: true,
+          pan: true,
+        }
+      },
+    },
+    dataLabels: {
+        enabled: true,
+        formatter: (val) => {
+            return val.toLocaleString('ru-RU')
+        }
+    },
+    stroke: {
+        width: [0, 4]
+    },
+    tooltip: {
+        y: {
+            formatter: (val) => {
+                return val.toLocaleString('ru-RU')
+            }
+        }
+    }
+}
 const mainchart_series = ref([{
-    name: "sales",
+    name: "Расходы",
+    type: 'column',
     data: [
         {
             x: '01.01.2024',
@@ -778,7 +861,7 @@ const mainchart_series = ref([{
             x: '02.01.2024',
             y: 600
         },
-    ]
+    ],
 }])
 
 const piechartSeries = ref([])
@@ -934,6 +1017,7 @@ api.getSummaryAmount()
                         start-placeholder="От"
                         end-placeholder="До"
                         :shortcuts="dateCalc.calendarShortcuts"
+                        format="DD.MM.YYYY"
                         @change="onPeriodChanged()"
                     />
                 </div>
@@ -995,7 +1079,7 @@ api.getSummaryAmount()
                         
                         <div class="operation-list" v-infinite-scroll="loadOperations" style="overflow: auto">
                             <OperationRow 
-                                v-for="item in expenses"
+                                v-for="item in filteredExpensesList"
                                 :key="item.id"
                                 :category="categories[item.categoryId].name || 'Прочее'"
                                 :amount="item.amount"
@@ -1003,7 +1087,7 @@ api.getSummaryAmount()
                                 @click="callEditOperationTab(item)"
                                 />
                         </div>
-                        <div v-if="expenses.length == 0" style="text-align: center; display: flex; flex-direction: column; gap: 10px; align-items: center; position: relative; top: 40%;">
+                        <div v-if="filteredExpensesList.length == 0" style="text-align: center; display: flex; flex-direction: column; gap: 10px; align-items: center; position: relative; top: 40%;">
                             <span style="opacity: 50%;">Нет записей</span>
                             <el-button type="primary" @click="callAddOperationForm" style="padding-left: 5px;">
                                 <svg class="w-[20px] h-[20px] text-gray-800 dark:text-white" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" style="margin-right: 5px;">
@@ -1022,7 +1106,7 @@ api.getSummaryAmount()
                 </div>
                 <div class = "main-chart grid1">
                     📊 График расходов
-                    <apexchart height="300" type="bar" :options="mainchart_options" :series="mainchart_series"></apexchart>
+                    <apexchart height="300" type="line" :options="mainchart_options" :series="mainchart_series"></apexchart>
                 </div>
             </div>
         </div>
@@ -1152,6 +1236,7 @@ api.getSummaryAmount()
                 style="width: 100%;"
                 value-format="x"
                 :default-time="defaultTime"
+                format="DD.MM.YYYY"
             />
             </el-form-item>
 
@@ -1236,6 +1321,7 @@ api.getSummaryAmount()
                 style="width: 100%;"
                 value-format="x"
                 :default-time="defaultTime"
+                format="DD.MM.YYYY"
             />
             </el-form-item>
             <el-form-item label="Потрачено" v-if="hasEditingBudget">
@@ -1249,8 +1335,8 @@ api.getSummaryAmount()
                 :stroke-width="8"
                 style="width: 100%;"
                 />
-                <span style="height: 25px; margin-right: auto;">{{ budgets[editingBudgetId].amount }} / {{ budgetFormBody.limit }} ₽</span>
-                <span style="height: 25px; margin-left: auto;">{{ Math.max(0, Number( budgetFormBody.limit - budgets[editingBudgetId].amount).toFixed(2)) }} ₽ осталось</span>
+                <span style="height: 25px; margin-right: auto;">{{ budgets[editingBudgetId].amount.toLocaleString('ru-RU') }} / {{ budgetFormBody.limit.toLocaleString('ru-RU') }} ₽</span>
+                <span style="height: 25px; margin-left: auto;">{{ Math.max(0, Number( budgetFormBody.limit - budgets[editingBudgetId].amount).toFixed(2)).toLocaleString('ru-RU') }} ₽ осталось</span>
             </el-form-item>
         </el-form>
         <template #footer>
@@ -1266,11 +1352,11 @@ api.getSummaryAmount()
                 <div class="expenses-container-toolbar" style="border-top: 1px solid #dcdfe6; padding-top: 15px;">
                     <span style="font-size: 1.1rem; font-weight: 400; text-align: left;">Связанные расходы</span>
                     <el-select-v2
-                    v-model="selected_expenses_sort"
+                    v-model="selected_budget_expenses_sort"
                     :options="expenses_sort_options"
                     placeholder="Сортировка"
                     style="vertical-align: middle; max-width: 240px; width: 200px; font-weight: 400;"
-                    @change="onExpensesSortChanged()"
+                    @change="onBudgetExpensesSortChanged()"
                     />
                 </div>
                 <div class="operation-list budget-expenses" v-infinite-scroll="loadBudgetExpenses" style="overflow: auto; text-align: right;">

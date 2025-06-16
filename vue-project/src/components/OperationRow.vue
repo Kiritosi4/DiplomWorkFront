@@ -13,7 +13,7 @@ const props = defineProps({
 <div class="row">
     <div class="text-info">
         <span>{{ category }}</span>
-        <span :class="profit ? 'profit' : 'amount'">{{ profit ? '+' : '-' }}{{ amount }} ₽</span>
+        <span :class="profit ? 'profit' : 'amount'">{{ profit ? '+' : '-' }}{{ amount.toLocaleString('ru-RU') }} ₽</span>
     </div>
     <div class="date-info">
         <span>{{ date }}</span>

@@ -19,7 +19,7 @@ defineProps({
     <el-row class="card-container">
       <el-col class="card1">
         <div class="statistic-card">
-          <el-statistic :value=firstDigit>
+          <el-statistic :value=firstDigit group-separator=" ">
             <template #title>
               <div style="display: inline-flex; align-items: center">
                 <span class="statistic-title">{{ firstTitle }}</span>
@@ -54,7 +54,7 @@ defineProps({
       </el-col>
       <el-col  class="card2">
         <div class="statistic-card">
-          <el-statistic :value=secDigit>
+          <el-statistic :value=secDigit group-separator=" ">
             <template #title>
               <div style="display: inline-flex; align-items: center">
                 <span class="statistic-title">{{ secTitle }} </span>
@@ -89,7 +89,7 @@ defineProps({
       </el-col>
       <el-col class="card3">
         <div class="statistic-card">
-          <el-statistic :value=thirdDigit title="New transactions today">
+          <el-statistic :value=thirdDigit group-separator=" ">
             <template #title>
               <div style="display: inline-flex; align-items: center">
                 <span class="statistic-title">{{ thirdTitle }}</span>

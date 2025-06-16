@@ -23,7 +23,7 @@ const customColors = [
 <div class="row">
     <div class="text-info">
         <span>{{ title }}</span>
-        <span>{{ amount }} / {{ limit }} ₽</span>
+        <span>{{ amount.toLocaleString('ru-RU') }} / {{ limit.toLocaleString('ru-RU') }} ₽</span>
     </div>
     <div class="progress-bar">
         <el-progress 
@@ -35,7 +35,7 @@ const customColors = [
     </div>
     <div class="footer">
         <span>{{ periodInfo }}</span>
-        <span>{{ Number(limit - amount).toFixed(2) }} ₽ осталось</span>
+        <span>{{ Number(limit - amount).toLocaleString('ru-RU') }} ₽ осталось</span>
     </div>
 </div>
 </template>

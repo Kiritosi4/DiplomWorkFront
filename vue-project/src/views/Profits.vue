@@ -574,9 +574,49 @@ const clearAddOperationForm = () => {
 // ======
 
 // === Графики ===
-const mainchart_options = {}
+const mainchart_options = {
+    chart: {
+        type: 'line',
+        zoom: {
+            enabled: true,
+            type: 'x',  
+            autoScaleYaxis: false, 
+            allowMouseWheelZoom: true,
+        },
+        toolbar: {
+        show: true,
+        offsetX: 0,
+        offsetY: 0,
+        tools: {
+          download: true,
+          selection: true,
+          zoom: true,
+          zoomin: true,
+          zoomout: true,
+          pan: true,
+        }
+      },
+    },
+    dataLabels: {
+        enabled: true,
+        formatter: (val) => {
+            return val.toLocaleString('ru-RU')
+        }
+    },
+    stroke: {
+        width: [0, 4]
+    },
+    tooltip: {
+        y: {
+            formatter: (val) => {
+                return val.toLocaleString('ru-RU')
+            }
+        }
+    }
+}
 const mainchart_series = ref([{
-    name: "sales",
+    name: "Доход",
+    type: 'column',
     data: [
         {
             x: '01.01.2024',
@@ -744,6 +784,7 @@ api.getSummaryAmount()
                         :shortcuts="dateCalc.calendarShortcuts"
                         @change="onPeriodChanged()"
                         style="max-width: 400px; min-width: 250px;"
+                        format="DD.MM.YYYY"
                     />
                 </div>
             </div>
@@ -842,7 +883,7 @@ api.getSummaryAmount()
                 </div>
                 <div class = "main-chart grid1">
                     📊 График доходов
-                    <apexchart height="300" type="bar" :options="mainchart_options" :series="mainchart_series"></apexchart>
+                    <apexchart height="300" type="line" :options="mainchart_options" :series="mainchart_series"></apexchart>
                 </div>
             </div>
         </div>
@@ -948,7 +989,7 @@ api.getSummaryAmount()
                 :stroke-width="8"
                 style="width: 100%;"
                 />
-                <span style="height: 25px; margin-inline: auto;">{{ Math.max(0, Number( targetFormBody.limit - targetFormBody.amount).toFixed(2))  }} ₽ осталось</span>
+                <span style="height: 25px; margin-inline: auto;">{{ Math.max(0, Number( targetFormBody.limit - targetFormBody.amount).toFixed(2)).toLocaleString('ru-RU')  }} ₽ осталось</span>
             </el-form-item>
             <el-form-item label="Накоплено">
                 <el-input-number 

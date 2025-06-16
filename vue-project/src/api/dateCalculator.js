@@ -51,25 +51,25 @@ export const calendarShortcuts = [
     {
         text: 'Этот день',
         value: () => {
-        return [getStartOfDay(), new Date()]
+        return [getStartOfDay(), getEndOfDay()]
         },
     },
     {
         text: 'Эта неделя',
         value: () => {
-        return [getStartOfWeek(), new Date()]
+        return [getStartOfWeek(), getEndOfDay()]
         },
     },
     {
         text: 'Этот месяц',
         value: () => {
-        return [getStartOfMonth(), new Date()]
+        return [getStartOfMonth(), getEndOfDay()]
         },
     },
     {
         text: 'Этот год',
         value: () => {
-        return [getStartOfYear(), new Date()]
+        return [getStartOfYear(), getEndOfDay()]
         },
     },
     {
