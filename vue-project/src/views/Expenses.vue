@@ -303,6 +303,11 @@ const callEditBudgetTab = (budget) => {
 }
 
 const editBudget = () => {
+    if(budgetFormBody.limit == null){
+        ElMessage.error("Некорректный формат числа.")
+        return
+    }
+    
     api.editBudget(editingBudgetId.value, budgetFormBody)
     .then((response) => {
         budgets[response.id] = response
@@ -336,12 +341,17 @@ const callBudgetForm = () => {
 }
 
 const addBudget = () => {
+    if(budgetFormBody.limit == null){
+        ElMessage.error("Некорректный формат числа.")
+        return
+    }
+
     api.addBudget(budgetFormBody)
     .then((response) => {
         response.amount = 0
         budgets[response.id] = response
 
-        ElMessage.success("Новый бюджет создан")
+        ElMessage.success("Новый бюджет создан.")
         clearBudgetForm()
     })
 }
@@ -588,6 +598,11 @@ const callEditOperationTab = (expense) => {
 }
 
 const editOperation = () => {
+    if(expenseFormBody.amount == null){
+        ElMessage.error("Некорректный фомрат числа.")
+        return
+    }
+
     const expenseIndex = expenses.value.findIndex(expense => expense.id === editingOperationId);
     const editedExpense =  expenses.value[expenseIndex] 
     
@@ -683,7 +698,7 @@ const editOperationConfirm = (editedExpense, currBudget) => {
         clearOperationList()
         loadOperations()
         refreshCharts()
-        if(hasEditingBudget){
+        if(hasEditingBudget.value){
             loadBudgetExpenses()
         }
 
@@ -719,6 +734,11 @@ const callAddOperationForm = () => {
 }
 
 const addOperation = () => {
+    if(expenseFormBody.amount == null){
+        ElMessage.error("Некорректный фомрат числа.")
+        return
+    }
+
     const expenseBudget = budgets[expenseFormBody.budgetId]
     const pickedTimestampSec = dateCalc.milisToSec(expenseFormBody.timestamp)
 

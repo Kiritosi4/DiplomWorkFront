@@ -258,6 +258,11 @@ const changeTargetState = () => {
 }
 
 const editTarget = () => {
+    if(targetFormBody.amount == null || targetFormBody.limit == null){
+        ElMessage.error("Некорректный формат числа.")
+        return
+    }
+
     api.editTargets(editingTargetId.value, targetFormBody)
     .then((response) => {
         targets[response.id] = response
@@ -291,6 +296,11 @@ const callTargetForm = () => {
 }
 
 const addTarget = () => {
+    if(targetFormBody.amount == null || targetFormBody.limit == null){
+        ElMessage.error("Некорректный формат числа.")
+        return
+    }
+
     api.addTarget(targetFormBody)
     .then((response) => {
         targets[response.id] = response
@@ -309,6 +319,11 @@ const clearTargetForm = () => {
 
 const addToTargetSum = ref(100)
 const addSumToTarget = () => {
+    if(addToTargetSum.value == null){
+        ElMessage.error("Некорерктный фомрат числа.")
+        return
+    }
+
     const closedTarget = targets[editingTargetId.value]
     const sumBody = {
         "name": closedTarget.name,
@@ -512,6 +527,11 @@ const callEditOperationTab = (profit) => {
 }
 
 const editOperation = () => {
+    if(profitFormBody.amount == null){
+        ElMessage.error("Некорректный формат числа.")
+        return
+    }
+
     const profitIndex = profits.value.findIndex(profit => profit.id === editingOperationId);
     const editedProfit =  profits.value[profitIndex] 
 
@@ -551,6 +571,11 @@ const callAddOperationForm = () => {
 }
 
 const addOperation = () => {
+    if(profitFormBody.amount == null){
+        ElMessage.error("Некорректный формат числа.")
+        return
+    }
+
     profitFormBody.timestamp = dateCalc.milisToSec(profitFormBody.timestamp)
     api.addProfit(profitFormBody)
     .then((response) => {
