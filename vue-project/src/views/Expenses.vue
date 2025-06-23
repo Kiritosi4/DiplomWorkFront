@@ -307,7 +307,7 @@ const editBudget = () => {
         ElMessage.error("Некорректный формат числа.")
         return
     }
-    
+
     api.editBudget(editingBudgetId.value, budgetFormBody)
     .then((response) => {
         budgets[response.id] = response

@@ -193,9 +193,18 @@ defineProps({
       grid-template-rows: repeat(2, 1fr);
     }
 
-    .card1 { grid-area: 1 / 1 / 2 / 3; }
+    .card1 { 
+      grid-area: 1 / 1 / 2 / 3;
+      margin-bottom: 15px;
+     }
     .card2 { grid-area: 2 / 1 / 3 / 2; }
     .card3 { grid-area: 2 / 2 / 3 / 3; }
+  }
+
+  @media (max-width: 600px) {
+    .card1 {
+      margin-bottom: 0px;
+    }
   }
   </style>
   
