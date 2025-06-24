@@ -107,6 +107,18 @@ const deleteCategory = () => {
     api.deleteExpenseCategory(editingCategoryId.value)
     .then(() => {
         delete categories[editingCategoryId.value]
+        
+        selected_categories.value = selected_categories.value.filter(id => id !== editingCategoryId.value)
+        onCategoryFilterChanged()
+
+        if(hasEditingExpense.value && editingCategoryId.value === expenseFormBody.categoryId){
+            expenseFormBody.categoryId = null
+        }
+        
+        if(hasEditingBudget.value && editingCategoryId.value === budgetFormBody.categoryId){
+            budgetFormBody.categoryId = null
+        }
+
         expenses.value.map(expense => {
             if(expense.categoryId === editingCategoryId.value){
                 expense.categoryId = null

@@ -108,6 +108,14 @@ const deleteCategory = () => {
     api.deleteProfitCategory(editingCategoryId.value)
     .then(() => {
         delete categories[editingCategoryId.value]
+
+        selected_categories.value = selected_categories.value.filter(id => id !== editingCategoryId.value)
+        onCategoryFilterChanged()
+
+        if(hasEditingProfit.value && editingCategoryId.value === profitFormBody.categoryId){
+            profitFormBody.categoryId = null
+        }
+
         profits.value.map(profit => {
             if(profit.categoryId === editingCategoryId.value){
                 profit.categoryId = null
